@@ -4,8 +4,10 @@
 Endpoints:
   POST /train - Train models on uploaded train/test CSVs and return metrics
   POST /predict - Load saved models and predict on uploaded CSV
+  POST /forecast_future - Generate future demand forecasts for N quarters per SKU
   GET /metrics - Get latest training metrics
   GET /health - Health check
+  GET /model/download - Download the trained LSTM model file
 """
 
 import os
