@@ -1,7 +1,3 @@
-#!/usr/bin/env python3
-"""Simple EDA for ecommerce_demand.csv
-Saves several PNGs and prints summary statistics to stdout.
-"""
 import os
 from pathlib import Path
 import numpy as np
@@ -23,25 +19,21 @@ args = p.parse_args()
 OUT_DIR = Path(args.out_dir)
 OUT_DIR.mkdir(exist_ok=True)
 
-# Load
 csv_file = Path(args.input)
 if not csv_file.exists():
     raise FileNotFoundError(f"Missing expected file: {csv_file}")
 
 df = pd.read_csv(csv_file, parse_dates=["date"]) 
 
-# Basic checks & printed summaries
 print("\n--- Basic info ---")
 print("Shape:", df.shape)
 print("Date range:", df["date"].min().date(), "to", df["date"].max().date())
 print("Columns:", list(df.columns))
 print("\nMissing values per column:\n", df.isnull().sum())
 
-# Confirm no negative sales
 neg_sales = (df["units_sold"] < 0).sum()
 print(f"Negative units_sold count: {neg_sales}")
 
-# Counts per SKU & promotion coverage
 print("\n--- Per-SKU summary ---")
 sku_groups = df.groupby("sku_id")
 summary = sku_groups.agg({
@@ -49,12 +41,10 @@ summary = sku_groups.agg({
     "price": ["mean"],
     "promotion_flag": ["mean"],
 })
-# Flatten multiindex columns and rename
 summary.columns = ["mean_units","std_units","mean_price","promo_frac"]
 summary = summary[["mean_units","std_units","mean_price","promo_frac"]]
 print(summary.round(3).to_string())
 
-# Promotion uplift per SKU
 promo_stats = []
 for sku, g in sku_groups:
     mean_promo = g.loc[g["promotion_flag"]==1, "units_sold"].mean()
@@ -65,10 +55,8 @@ for sku, g in sku_groups:
 promo_df = pd.DataFrame(promo_stats, columns=["sku_id","mean_no_promo","mean_promo","relative_lift"])
 print("\nPromotion effect (avg units, no-promo vs promo):\n", promo_df.round(3).to_string(index=False))
 
-# Time series aggregates
 daily_total = df.groupby("date")["units_sold"].sum()
 
-# Plot 1: total units sold over time
 if HAVE_MPL:
     plt.figure(figsize=(12,4))
     plt.plot(daily_total.index, daily_total.values, lw=0.8)
@@ -82,7 +70,6 @@ if HAVE_MPL:
 else:
     print("Skipping total units timeseries plot (matplotlib not available)")
 
-# Plot 2: per SKU time series (monthly rolling mean)
 if HAVE_MPL:
     fig, axes = plt.subplots(nrows=3, ncols=1, figsize=(12,9), sharex=True)
     for ax, sku in zip(axes, sorted(df["sku_id"].unique())):
@@ -98,7 +85,6 @@ if HAVE_MPL:
 else:
     print("Skipping per-SKU timeseries plots (matplotlib not available)")
 
-# Plot 3: weekday seasonality per SKU (mean units by weekday)
 df["weekday"] = df["date"].dt.weekday
 wk = df.groupby(["sku_id","weekday"])["units_sold"].mean().reset_index()
 pivot = wk.pivot(index="weekday", columns="sku_id", values="units_sold")
@@ -114,7 +100,6 @@ if HAVE_MPL:
 else:
     print("Skipping weekday seasonality plot (matplotlib not available)")
 
-# Plot 4: promotion impact bar chart (mean units w/o and with promo)
 promo_compare = df.groupby(["sku_id","promotion_flag"])["units_sold"].mean().unstack()
 promo_compare.columns = ["no_promo","promo"]
 if HAVE_MPL:
@@ -128,7 +113,6 @@ if HAVE_MPL:
 else:
     print("Skipping promotion impact plot (matplotlib not available)")
 
-# Plot 5: price vs units scatter per SKU (sampled for clarity)
 for sku in sorted(df["sku_id"].unique()):
     g = df[df["sku_id"]==sku].sample(n=min(1000, len(df)), random_state=0)
     if HAVE_MPL:
@@ -144,17 +128,14 @@ for sku in sorted(df["sku_id"].unique()):
     else:
         print(f"Skipping price vs units scatter for {sku} (matplotlib not available)")
 
-# Save a small CSV summary
 promo_df.to_csv(OUT_DIR / "promo_summary.csv", index=False)
 summary.round(3).to_csv(OUT_DIR / "per_sku_summary.csv")
 
-# Print artifact list
 artifacts = [str(p) for p in sorted(OUT_DIR.iterdir())]
 print("\nSaved artifacts:")
 for a in artifacts:
     print(" -", a)
 
-# Quick numeric highlights
 print("\nHighlights:")
 for _, row in promo_df.iterrows():
     print(f"{row['sku_id']}: mean (no promo)={row['mean_no_promo']:.2f}, mean(promo)={row['mean_promo']:.2f}, lift={(row['relative_lift']*100):.1f}%")

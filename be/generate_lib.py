@@ -1,6 +1,3 @@
-"""Library functions for generating synthetic e-commerce demand datasets.
-Offers generate_dataset(...) which returns a pandas DataFrame and saves CSV.
-"""
 from typing import Dict, Any, Optional
 import numpy as np
 import pandas as pd
@@ -41,12 +38,7 @@ def generate_dataset(
     variant_name: str = "base",
     n_locations: int = 1,
 ) -> pd.DataFrame:
-    """Generate dataset with optional replication across multiple locations (stores).
 
-    If `n_locations` > 1, each SKU's daily series is replicated across locations with
-    small random location-level variation (demand multiplier and small price shift)
-    so the final CSV size becomes days × SKUs × n_locations.
-    """
     rng = np.random.default_rng(seed)
 
     dates = pd.date_range(start=START_DATE, end=END_DATE, freq="D")
@@ -63,9 +55,8 @@ def generate_dataset(
 
     rows = []
     for loc in range(n_locations):
-        # small location-level modifiers (different stores/regions)
         loc_demand_mult = rng.normal(1.0, 0.05)
-        loc_price_shift = rng.normal(0.0, 0.02)  # fraction of base price added
+        loc_price_shift = rng.normal(0.0, 0.02)
         for sku in SKUS:
             base = BASE_DEMAND[sku] * loc_demand_mult
             base_price = BASE_PRICE[sku] * base_price_scale * (1.0 + loc_price_shift)
@@ -110,8 +101,7 @@ def generate_dataset(
             rev = reversion_rate[sku] if isinstance(reversion_rate, dict) else reversion_rate
             local_price_noise = DAILY_PRICE_NOISE_STD_SKU.get(sku, DAILY_PRICE_NOISE_STD) * (price_noise_multiplier.get(sku, 1.0) if isinstance(price_noise_multiplier, dict) else price_noise_multiplier)
 
-            # Add weekly seasonality and use soft clipping to avoid many identical boundary values
-            price_season_amp = 0.012 * base_price  # ~1.2% weekly amplitude
+            price_season_amp = 0.012 * base_price
             season_phase = rng.uniform(0, 2 * np.pi)
             for t in range(1, n_days):
                 drift = rev * (base_price - price[t - 1])
@@ -119,11 +109,9 @@ def generate_dataset(
                 price_candidate = price[t - 1] + drift + p_noise
                 if discount_pct[t] > 0:
                     price_candidate = price_candidate * (1.0 - discount_pct[t])
-                # seasonal and scaled jitter (proportional to base price)
                 season = price_season_amp * np.sin(2 * np.pi * t / 7 + season_phase)
                 jitter = rng.normal(0.0, 0.03 * base_price)
                 price_candidate += season + jitter
-                # soft clipping: nudge away from exact min/max to reduce stacking at boundaries
                 lower_bound = base_price * min_f
                 upper_bound = base_price * max_f
                 if price_candidate <= lower_bound:
@@ -165,7 +153,6 @@ def generate_dataset(
     df = pd.concat(rows, ignore_index=True)
     df = df.sort_values(["date", "sku_id"]).reset_index(drop=True)
 
-    # Sanity check: expected rows = days * SKUs * locations
     expected_rows = n_days * len(SKUS) * n_locations
     if df.shape[0] != expected_rows:
         raise RuntimeError(f"Unexpected number of rows: {df.shape[0]} != {expected_rows}")
