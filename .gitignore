@@ -1,0 +1,35 @@
+__pycache__/
+.venv/
+env/
+venv/
+node_modules
+
+# Output
+.output
+.vercel
+.netlify
+.wrangler
+/.svelte-kit
+/build
+*.pyc
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.*
+!.env.example
+!.env.test
+
+# Vite
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+
+*.keras
+*.h5
+*.ckpt
+*.pkl
+
+*.csv
