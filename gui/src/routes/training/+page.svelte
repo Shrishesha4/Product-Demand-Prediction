@@ -12,7 +12,9 @@
 		type ChartConfiguration
 	} from 'chart.js';
 
-	Chart.register(BarController, BarElement, CategoryScale, LinearScale, Title, Tooltip, Legend);
+	onMount(() => {
+		Chart.register(BarController, BarElement, CategoryScale, LinearScale, Title, Tooltip, Legend);
+	});
 
 	let trainFile: File | null = null;
 	let testFile: File | null = null;

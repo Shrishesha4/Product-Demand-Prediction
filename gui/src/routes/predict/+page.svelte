@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import {
 		Chart,
 		LineController,
@@ -15,19 +16,21 @@
 		type ChartConfiguration
 	} from 'chart.js';
 
-	Chart.register(
-		LineController,
-		LineElement,
-		PointElement,
-		LinearScale,
-		CategoryScale,
-		Title,
-		Tooltip,
-		Legend,
-		Filler,
-		BarController,
-		BarElement
-	);
+	onMount(() => {
+		Chart.register(
+			LineController,
+			LineElement,
+			PointElement,
+			LinearScale,
+			CategoryScale,
+			Title,
+			Tooltip,
+			Legend,
+			Filler,
+			BarController,
+			BarElement
+		);
+	});
 
 	let dataFile: File | null = null;
 	let quarters = 4;

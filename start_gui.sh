@@ -10,6 +10,16 @@ BE_DIR="$ROOT_DIR/be"
 GUI_DIR="$ROOT_DIR/gui"
 BE_VENV="$BE_DIR/.venv"
 
+# Load project-wide .env if present so dev envs (e.g. PUBLIC_HOST/HMR_*) are applied
+if [[ -f "$ROOT_DIR/.env" ]]; then
+  echo "🔐 Loading environment variables from $ROOT_DIR/.env"
+  # export all variables defined in the .env so child processes inherit them
+  set -a
+  # shellcheck disable=SC1091
+  source "$ROOT_DIR/.env"
+  set +a
+fi
+
 PY_BIN=""
 if command -v python3 >/dev/null 2>&1; then
     PY_BIN=python3
@@ -27,11 +37,38 @@ fi
 
 source "$BE_VENV/bin/activate"
 
-echo "📦 Installing backend Python requirements..."
+echo "📦 Checking backend Python requirements..."
+
+# Compute a hash of the requirements file to avoid reinstalling if nothing changed
+_requirements_file="$BE_DIR/requirements.txt"
+_requirements_hash_file="$BE_VENV/.requirements_hash"
+
+# Helper: compute SHA256 of a file in a portable way
+compute_hash() {
+    if command -v shasum >/dev/null 2>&1; then
+        shasum -a 256 "$1" | awk '{print $1}'
+    else
+        python - <<PY -c "import sys,hashlib
+p=sys.argv[1]
+print(hashlib.sha256(open(p,'rb').read()).hexdigest())" "$1"
+PY
+    fi
+}
 
 python -m pip install --upgrade pip setuptools wheel >/dev/null
-if [ -f "$BE_DIR/requirements.txt" ]; then
-    python -m pip install -r "$BE_DIR/requirements.txt"
+if [ -f "$_requirements_file" ]; then
+    new_hash=$(compute_hash "$_requirements_file")
+    old_hash=""
+    if [ -f "$_requirements_hash_file" ]; then
+        old_hash=$(cat "$_requirements_hash_file")
+    fi
+    if [ "$new_hash" = "$old_hash" ]; then
+        echo "✔ Backend requirements unchanged — skipping pip install"
+    else
+        echo "🔄 Installing/updating backend Python requirements from $_requirements_file..."
+        python -m pip install -r "$_requirements_file"
+        echo "$new_hash" > "$_requirements_hash_file"
+    fi
 else
     echo "⚠️  No requirements.txt found in $BE_DIR — skipping pip install"
 fi
@@ -41,9 +78,40 @@ if ! command -v npm >/dev/null 2>&1; then
     exit 1
 fi
 
+# Install frontend deps only if package-lock.json/package.json changed or node_modules missing
+lock_file=""
+if [ -f "$GUI_DIR/package-lock.json" ]; then
+    lock_file="$GUI_DIR/package-lock.json"
+elif [ -f "$GUI_DIR/package.json" ]; then
+    lock_file="$GUI_DIR/package.json"
+fi
+
+_frontend_hash_file="$GUI_DIR/.node_deps_hash"
+install_frontend_deps() {
+    echo "📥 Installing frontend dependencies (npm i)..."
+    (cd "$GUI_DIR" && npm i)
+}
+
 if [ ! -d "$GUI_DIR/node_modules" ]; then
-    echo "📥 Installing frontend dependencies (npm ci)..."
-    (cd "$GUI_DIR" && npm ci)
+    echo "📥 node_modules missing — installing frontend dependencies"
+    install_frontend_deps
+else
+    if [ -n "$lock_file" ]; then
+        new_hash=$(compute_hash "$lock_file")
+        old_hash=""
+        if [ -f "$_frontend_hash_file" ]; then
+            old_hash=$(cat "$_frontend_hash_file")
+        fi
+        if [ "$new_hash" = "$old_hash" ]; then
+            echo "✔ Frontend dependencies appear up-to-date — skipping npm ci"
+        else
+            echo "🔄 Package file changed — reinstalling frontend dependencies"
+            install_frontend_deps
+            echo "$new_hash" > "$_frontend_hash_file"
+        fi
+    else
+        echo "⚠️  No package.json or package-lock.json found — skipping frontend install"
+    fi
 fi
 
 cleanup() {
