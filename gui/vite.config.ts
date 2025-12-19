@@ -12,27 +12,33 @@ const allowedHosts = parseAllowedHosts(allowedHostsEnv);
 
 const hostBinding: boolean | string = process.env.HOST ? process.env.HOST : true;
 
+// Public host used by HMR clients (set to your proxied domain when behind reverse proxy)
+const publicHost = process.env.PUBLIC_HOST || process.env.HMR_HOST || 'pdp.shrishesha.space';
 const hmrProtocol = process.env.HMR_PROTOCOL || (process.env.HTTPS ? 'wss' : 'ws');
 
-const hmrServerHost = process.env.HMR_BIND_HOST || undefined;
+// Bind host for the server (where Vite listens) - leave undefined to use server.host
+const hmrBindHost = process.env.HMR_BIND_HOST || undefined;
 const hmrServerPort = process.env.HMR_PORT ? Number(process.env.HMR_PORT) : 5173;
 const hmrClientPort = process.env.HMR_CLIENT_PORT
 	? Number(process.env.HMR_CLIENT_PORT)
 	: (hmrProtocol === 'wss' ? 443 : 5173);
+// Client-facing host (what the browser should connect to). Do not allow 0.0.0.0 here.
+let hmrClientHost = process.env.HMR_HOST || publicHost;
+if (hmrClientHost === '0.0.0.0' || hmrClientHost === '::' || hmrClientHost === '') {
+	hmrClientHost = publicHost;
+}
 
 export default defineConfig({
 	plugins: [tailwindcss(), sveltekit()],
 	server: {
 		host: hostBinding,
 		allowedHosts: allowedHosts as any,
-		hmr: Object.assign(
-			{
-				protocol: hmrProtocol as any,
-				port: hmrServerPort,
-				clientPort: hmrClientPort,
-			},
-			(hmrServerHost ? { host: hmrServerHost } : {})
-		),
+		hmr: {
+			protocol: hmrProtocol as any,
+			host: hmrClientHost,
+			port: hmrServerPort,
+			clientPort: hmrClientPort,
+		},
 	},
 	preview: {
 		host: hostBinding,
