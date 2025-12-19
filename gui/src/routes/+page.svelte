@@ -118,13 +118,12 @@
 </div>
 
 <style>
-	/* Minimalistic / Scientific theme: neutral surfaces, subtle accents, high legibility */
 	:global(body) {
 		margin: 0;
 		font-family: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue',
 			Arial;
-		background: #f5f7fa; /* soft neutral */
-		color: #0f172a; /* dark slate for text */
+		background: #f5f7fa;
+		color: #0f172a;
 		-webkit-font-smoothing: antialiased;
 		-moz-osx-font-smoothing: grayscale;
 		min-height: 100vh;
@@ -211,12 +210,10 @@
 
 
 	.features li { padding: 0.25rem 0; }
-
-	/* Clear, visible CTA button with good contrast */
 	.cta-btn {
 		width: 100%;
 		padding: 0.9rem 1rem;
-		background: #0b5fff; /* crisp scientific blue */
+		background: #0b5fff;
 		color: #ffffff;
 		border: 1px solid rgba(11, 95, 255, 0.12);
 		border-radius: 8px;
@@ -233,8 +230,6 @@
 		background: #054be6;
 		box-shadow: 0 10px 24px rgba(11, 95, 255, 0.10);
 	}
-
-	/* Info section and steps are cleaner with subtle border */
 	.info-section {
 		background: transparent;
 		padding: 1.25rem;
@@ -283,8 +278,6 @@
 		.cards { grid-template-columns: 1fr; gap: 0.75rem; }
 		.container { padding: 1rem; }
 	}
-
-	/* Project & contributors styling (improved spacing & highlights) */
 	.project-section {
 		background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
 		padding: 1.5rem;
@@ -292,7 +285,6 @@
 		border: 1px solid #e6eef6;
 		margin-bottom: 1.75rem;
 	}
-	/* Section heading pill */
 	.project-section h3 {
 		display: inline-block;
 		background: #eef6ff;
@@ -303,7 +295,6 @@
 		font-size: 1.08rem;
 		font-weight: 700;
 	}
-	/* Slightly enhanced h4 for subsection headings */
 	.project-section h4 {
 		font-size: 0.98rem;
 		margin: 0.5rem 0 0.75rem 0;
@@ -372,7 +363,6 @@
 		line-height: 1.4;
 	}
 
-	/* Course info */
 	.course-info { text-align: center; margin-top: 1rem; margin-bottom: 0.5rem; }
 	.course-name { font-weight: 700; color: #0b1220; margin: 0; }
 	.course-code { color: #475569; margin: 0; }

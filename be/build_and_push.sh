@@ -9,5 +9,4 @@ if [[ ! -f "$ROOT_SCRIPT" ]]; then
   echo "Error: root build_and_push.sh not found at $ROOT_SCRIPT"
   exit 1
 fi
-# Forward all args to the root script
 exec "$ROOT_SCRIPT" "$@"
