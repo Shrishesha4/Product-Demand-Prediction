@@ -253,13 +253,13 @@ const response = await fetch(`${API_BASE}/api/forecast_future`, {
 					y: {
 						display: true,
 						title: {
-							display: true,
-							text: 'Predicted Units',
-							font: {
-								size: 14,
-								weight: 'bold'
-							}
-						},
+								display: true,
+								text: 'Predicted Units',
+								font: {
+									size: 14,
+									weight: 'bold'
+								}
+							},
 						beginAtZero: false
 					}
 				}
@@ -293,11 +293,63 @@ const response = await fetch(`${API_BASE}/api/forecast_future`, {
 				}
 
 				chart.update();
+				adjustChartYAxis(chart, values, ma7, ma14);
 			}
 		} catch (err) {
 			console.warn('Post-chart adjustments failed:', err);
 		}
 	}
+
+	let _yAdjustInProgress = false;
+function adjustChartYAxis(chart:any, values:any[], ma7:any[], ma14:any[]) {
+	// Prevent re-entrancy
+	if (!chart || _yAdjustInProgress) return;
+	_yAdjustInProgress = true;
+
+	try {
+		const numeric = [
+			...values,
+			...ma7.filter((v:any)=>v!==null),
+			...ma14.filter((v:any)=>v!==null)
+		].filter((v:any)=>v!==null && !isNaN(v));
+
+		if (!numeric.length) {
+			_yAdjustInProgress = false;
+			return;
+		}
+		const mn = Math.min(...numeric);
+		const mx = Math.max(...numeric);
+		
+		requestAnimationFrame(() => {
+			try {
+				if (!chart.options) chart.options = {};
+				if (!chart.options.scales) chart.options.scales = {};
+				if (!chart.options.scales.y) chart.options.scales.y = {};
+				
+				const range = mx - mn;
+
+				if (range === 0) {
+					const y = mx;
+					chart.options.scales.y.min = Math.max(0, y - 1);
+					chart.options.scales.y.max = y + 1;
+				} else {
+					const pad = range * 0.15; // 15% padding
+					chart.options.scales.y.min = Math.max(0, mn - pad);
+					chart.options.scales.y.max = mx + pad;
+				}
+				chart.update();
+			} catch (err) {
+				console.warn('adjustChartYAxis inner failed', err);
+			} finally {
+				_yAdjustInProgress = false;
+			}
+		});
+	} catch (e) { 
+		_yAdjustInProgress = false; 
+		console.warn('adjustChartYAxis failed', e); 
+	}
+}
+
 
 	function renderQuarterlyChart() {
 		if (!forecast || !quarterlyChartCanvas || selectedSku === 'all') {
@@ -373,6 +425,8 @@ const response = await fetch(`${API_BASE}/api/forecast_future`, {
 		};
 
 		quarterlyChart = new Chart(quarterlyChartCanvas, config);
+	// Adjust y-axis so small differences in quarterly bars are visible
+	adjustChartYAxis(quarterlyChart, quarterlyData.map((q:any)=>q.predicted_units), [], []);
 	}
 
 	function renderWeekdayChart() {
@@ -463,6 +517,7 @@ const response = await fetch(`${API_BASE}/api/forecast_future`, {
 		};
 
 		monthlyChart = new Chart(monthlyCanvas, cfg);
+	adjustChartYAxis(monthlyChart, values, [], []);
 	}
 
 	function renderSkuComparisonChart() {
@@ -510,6 +565,11 @@ const response = await fetch(`${API_BASE}/api/forecast_future`, {
 			if (skuComparisonChart && skuComparisonChart.data && skuComparisonChart.data.datasets) {
 				skuComparisonChart.data.datasets.forEach((d: any) => { d.pointRadius = 0; d.tension = 0.15; d.cubicInterpolationMode = 'monotone'; });
 				skuComparisonChart.update();
+				// Adjust Y to ensure differences are visible
+				try {
+					const allValues = skuComparisonChart.data.datasets.flatMap((ds:any)=>ds.data as number[]);
+					adjustChartYAxis(skuComparisonChart, allValues, [], []);
+				} catch (err) { console.warn('SKU y-axis adjust failed', err); }
 			}
 		} catch (e) { console.warn('SKU comparison post-adjust failed', e); }
 	}

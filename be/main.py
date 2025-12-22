@@ -273,27 +273,46 @@ async def forecast_future(
             hist_agg = load_and_aggregate(str(data_path))
             feature_cols = ['total_units', 'avg_price', 'promo_any', 'dow_sin', 'dow_cos', 'doy_sin', 'doy_cos']
             
+            # Ensure forecasts start from TODAY. If historical data ends before today,
+            # pad the history up to yesterday so the first forecast day is today.
+            forecast_start = pd.Timestamp.now().normalize()
             last_date = hist_agg.index[-1]
-            
-            if SCALER_PATH.exists():
-                try:
-                    scaler = joblib.load(str(SCALER_PATH))
-                    logger.info("Loaded scaler for future forecasting from %s", SCALER_PATH)
-                except Exception as exc:
-                    logger.warning("Failed to load scaler; falling back to fit on historical data: %s", exc)
-                    from sklearn.preprocessing import MinMaxScaler
-                    scaler = MinMaxScaler()
-                    scaler.fit(hist_agg[feature_cols].values)
-            else:
-                from sklearn.preprocessing import MinMaxScaler
-                scaler = MinMaxScaler()
-                scaler.fit(hist_agg[feature_cols].values)
+            if last_date < (forecast_start - pd.Timedelta(days=1)):
+                pad_start = last_date + pd.Timedelta(days=1)
+                pad_end = forecast_start - pd.Timedelta(days=1)
+                pad_idx = pd.date_range(start=pad_start, end=pad_end, freq='D')
+                if len(pad_idx) > 0:
+                    avg_price_mean = float(hist_agg['avg_price'].mean())
+                    last_units = int(hist_agg['total_units'].iloc[-1])
+                    pad_rows = []
+                    for d in pad_idx:
+                        dow = int(d.dayofweek)
+                        doy = int(d.dayofyear)
+                        pad_rows.append({
+                            'date': d,
+                            'total_units': last_units,
+                            'avg_price': avg_price_mean,
+                            'promo_any': 0,
+                            'dow': dow,
+                            'dow_sin': np.sin(2 * np.pi * dow / 7),
+                            'dow_cos': np.cos(2 * np.pi * dow / 7),
+                            'doy_sin': np.sin(2 * np.pi * doy / 365.25),
+                            'doy_cos': np.cos(2 * np.pi * doy / 365.25),
+                        })
+                    pad_df = pd.DataFrame(pad_rows).set_index('date')
+                    hist_agg = pd.concat([hist_agg, pad_df])
+                    logger.info("Padded %d days to historical data so forecasts start today (%s)", len(pad_idx), forecast_start.strftime('%Y-%m-%d'))
+                    last_date = hist_agg.index[-1]
 
-            seed_data = hist_agg[feature_cols].iloc[-N_IN:].values
-
-            if model_type == "sarimax":
+            # If historical data already goes up to or after today, we will forecast starting from the next day
+            # so that the first forecasted date is either today or just after the latest observed date.
                 try:
-                    hist_series = hist_agg['total_units']
+                    hist_series = hist_agg['total_units'].copy()
+                    try:
+                        if hist_series.index.freq is None:
+                            hist_series = hist_series.asfreq('D')
+                    except Exception:
+                        pass
                     order, seasonal = select_sarimax_order(hist_series, exog=None, s=7)
                     model = SARIMAX(hist_series, order=order, seasonal_order=seasonal, enforce_stationarity=False, enforce_invertibility=False)
                     try:

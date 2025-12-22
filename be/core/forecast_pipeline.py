@@ -69,6 +69,12 @@ def load_and_aggregate(csv_path: str) -> pd.DataFrame:
     full_idx = pd.date_range(start=agg.index.min(), end=agg.index.max(), freq="D")
     agg = agg.reindex(full_idx)
     agg.index.name = "date"
+    # Ensure index has an explicit daily frequency so statsmodels won't emit ValueWarning
+    try:
+        agg.index.freq = "D"
+    except Exception:
+        agg = agg.asfreq("D")
+
     agg["total_units"] = agg["total_units"].fillna(0).astype(int)
     agg["avg_price"] = agg["avg_price"].ffill().bfill()
     agg["promo_any"] = agg["promo_any"].fillna(0).astype(int)
@@ -99,13 +105,21 @@ def mape(y_true: np.ndarray, y_pred: np.ndarray) -> float:
 
 def select_arima_order(series: pd.Series, p_max=3, d_vals=(0, 1), q_max=3) -> Tuple[int, int, int]:
 
+    # Ensure series has daily frequency to avoid ValueWarning in ARIMA/SARIMAX
+    try:
+        s = series.copy()
+        if s.index.freq is None:
+            s = s.asfreq("D")
+    except Exception:
+        s = series
+
     best_aic = float("inf")
     best_order = (0, 0, 0)
     for d in d_vals:
         for p in range(p_max + 1):
             for q in range(q_max + 1):
                 try:
-                    model = ARIMA(series, order=(p, d, q))
+                    model = ARIMA(s, order=(p, d, q))
                     res = model.fit(method="innovations_mle", disp=0)
                     if res.aic < best_aic:
                         best_aic = res.aic
@@ -130,8 +144,21 @@ def select_sarimax_order(
     Q_max: int = 1,
 ) -> Tuple[Tuple[int, int, int], Tuple[int, int, int, int]]:
 
-    train_series = series
+    train_series = series.copy()
+    # Ensure training series has explicit daily frequency to avoid statsmodels ValueWarning
+    try:
+        if train_series.index.freq is None:
+            train_series = train_series.asfreq("D")
+    except Exception:
+        pass
+
     train_exog = exog.loc[train_series.index] if exog is not None else None
+    # Ensure exogenous DataFrame has daily frequency as well
+    try:
+        if train_exog is not None and train_exog.index.freq is None:
+            train_exog = train_exog.asfreq("D")
+    except Exception:
+        pass
 
     if train_exog is not None and not train_exog.empty:
         scaler = StandardScaler()
@@ -191,7 +218,20 @@ def train_and_forecast_sarimax_on_train_test(
     maxiter_final: int = 2000,
 ) -> tuple[pd.Series, object]:
 
-    train_series = train_df["total_units"]
+    train_series = train_df["total_units"].copy()
+    # Ensure index has explicit daily frequency to suppress statsmodels ValueWarning
+    try:
+        if train_series.index.freq is None:
+            train_series = train_series.asfreq("D")
+    except Exception:
+        pass
+
+    # Ensure test_df index has frequency too
+    try:
+        if test_df.index.freq is None:
+            test_df = test_df.asfreq("D")
+    except Exception:
+        pass
 
     if exog_cols is None:
         exog_cols = [c for c in ["avg_price", "promo_any", "dow_sin", "doy_sin"] if c in train_df.columns]
@@ -281,6 +321,7 @@ def train_and_forecast_lstm_on_train_test(
     verbose: int = 1,
 ) -> tuple[pd.Series, tf.keras.Model, MinMaxScaler]:
 
+    # Ablation flag: if set on train_df, remove cyclical features from LSTM inputs
     feature_cols = [c for c in train_df.columns if c in ("total_units", "avg_price", "promo_any", "dow_sin", "dow_cos", "doy_sin", "doy_cos")]
     train_arr = train_df[feature_cols].values.astype(float)
     test_arr = test_df[feature_cols].values.astype(float)

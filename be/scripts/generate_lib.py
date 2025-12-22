@@ -37,14 +37,21 @@ def generate_dataset(
     currency: str = "USD",
     variant_name: str = "base",
     n_locations: int = 1,
+    start_date: str = START_DATE,
+    end_date: str = END_DATE,
 ) -> pd.DataFrame:
-
+    """Generates a synthetic ecommerce demand dataset."""
     rng = np.random.default_rng(seed)
 
-    dates = pd.date_range(start=START_DATE, end=END_DATE, freq="D")
+    dates = pd.date_range(start=start_date, end=end_date, freq="D")
     n_days = len(dates)
     day_idx = np.arange(n_days)
     day_of_year = dates.dayofyear.values
+
+    local_base_demand = {k: v * rng.uniform(0.9, 1.1) for k, v in BASE_DEMAND.items()}
+    local_base_price = {k: v * rng.uniform(0.9, 1.1) for k, v in BASE_PRICE.items()}
+    local_weekly_strength = {k: v * rng.uniform(0.8, 1.2) for k, v in WEEKLY_STRENGTH.items()}
+    local_yearly_strength = {k: v * rng.uniform(0.8, 1.2) for k, v in YEARLY_STRENGTH.items()}
 
     vp = variant_params or {}
     base_price_scale = vp.get("base_price_scale", 1.0)
@@ -58,11 +65,11 @@ def generate_dataset(
         loc_demand_mult = rng.normal(1.0, 0.05)
         loc_price_shift = rng.normal(0.0, 0.02)
         for sku in SKUS:
-            base = BASE_DEMAND[sku] * loc_demand_mult
-            base_price = BASE_PRICE[sku] * base_price_scale * (1.0 + loc_price_shift)
+            base = local_base_demand[sku] * loc_demand_mult
+            base_price = local_base_price[sku] * base_price_scale * (1.0 + loc_price_shift)
 
-            weekly_component = WEEKLY_STRENGTH[sku] * base * np.sin(2 * np.pi * day_idx / 7)
-            yearly_component = YEARLY_STRENGTH[sku] * base * np.sin(2 * np.pi * day_of_year / 365.25)
+            weekly_component = local_weekly_strength[sku] * base * np.sin(2 * np.pi * day_idx / 7)
+            yearly_component = local_yearly_strength[sku] * base * np.sin(2 * np.pi * day_of_year / 365.25)
             trend_total = base * TREND_FRACTION[sku]
             trend = trend_total * (day_idx / float(n_days - 1))
 
@@ -125,7 +132,8 @@ def generate_dataset(
             price_effect = PRICE_ELASTICITY_SKU[sku] * (price - price_mean) / price_mean * base
             units_raw = base + trend + weekly_component + yearly_component + noise + price_effect
 
-            shocks = (rng.random(n_days) < SHOCK_PROB)
+            shock_prob = vp.get("shock_prob", SHOCK_PROB)
+            shocks = (rng.random(n_days) < shock_prob)
             if shocks.any():
                 shock_mults = rng.uniform(SHOCK_MULT_RANGE[0], SHOCK_MULT_RANGE[1], size=shocks.sum())
                 units_raw[shocks] = units_raw[shocks] * shock_mults

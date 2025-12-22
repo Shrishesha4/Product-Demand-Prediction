@@ -11,7 +11,7 @@ Outputs are saved as:
 import subprocess
 import sys
 from pathlib import Path
-from be.scripts.generate_lib import generate_dataset
+from generate_lib import generate_dataset
 
 ROOT = Path(__file__).resolve().parent
 EDA_SCRIPT = ROOT / "eda_ecommerce.py"
@@ -45,6 +45,21 @@ variants = {
             "dispersion_shape_sku3": 0.7,
         },
     },
+    "C": {
+        "desc": "Highly randomized data",
+        "params": {
+            "base_price_scale": 100.0,
+            "price_min_factor": {"SKU_001": 0.7, "SKU_002": 0.7, "SKU_003": 0.6},
+            "price_max_factor": {"SKU_001": 1.3, "SKU_002": 1.3, "SKU_003": 1.4},
+            "reversion_rate": {"SKU_001": 0.01, "SKU_002": 0.01, "SKU_003": 0.01},
+            "price_noise_multiplier": {"SKU_001": 2.0, "SKU_002": 2.0, "SKU_003": 3.0},
+            "promo_window_mean": 7,
+            "promo_window_min": 3,
+            "promo_window_max": 14,
+            "dispersion_shape_sku3": 0.6,
+            "shock_prob": 0.02,
+        },
+    },
 }
 
 artifacts = []
@@ -52,8 +67,37 @@ artifacts = []
 for name, v in variants.items():
     out_csv = ROOT / f"ecommerce_demand_variant_{name}_INR.csv"
     print(f"Generating variant {name}: {v['desc']}")
-    generate_dataset(out_file=str(out_csv), seed=42, variant_params=v["params"], currency="INR", variant_name=name, n_locations=9)
+
+    # Generate a single DataFrame
+    full_df = generate_dataset(
+        out_file=str(out_csv),
+        seed=42,
+        variant_params=v["params"],
+        currency="INR",
+        variant_name=name,
+        n_locations=9,
+        start_date="2022-01-01",
+        end_date="2024-12-31",
+    )
+
+    # Split into train and test
+    split_date = "2024-01-01"
+    train_df = full_df[full_df["date"] < split_date]
+    test_df = full_df[full_df["date"] >= split_date]
+
+    train_csv = ROOT / f"ecommerce_demand_variant_{name}_train_INR.csv"
+    test_csv = ROOT / f"ecommerce_demand_variant_{name}_test_INR.csv"
+
+    train_df.to_csv(train_csv, index=False)
+    test_df.to_csv(test_csv, index=False)
+
+    print(f"  Train set: {train_csv} ({len(train_df)} rows)")
+    print(f"  Test set: {test_csv} ({len(test_df)} rows)")
+
+
     artifacts.append(str(out_csv))
+    artifacts.append(str(train_csv))
+    artifacts.append(str(test_csv))
 
     out_dir = ROOT / "eda_outputs" / f"variant_{name}"
     out_dir.mkdir(parents=True, exist_ok=True)

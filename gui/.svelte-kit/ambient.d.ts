@@ -45,7 +45,6 @@ declare module '$env/static/private' {
 	export const COLOR: string;
 	export const npm_config_noproxy: string;
 	export const npm_config_local_prefix: string;
-	export const PYENV_VERSION: string;
 	export const USER: string;
 	export const COMMAND_MODE: string;
 	export const npm_config_globalconfig: string;
@@ -53,6 +52,7 @@ declare module '$env/static/private' {
 	export const VSCODE_PROFILE_INITIALIZED: string;
 	export const __CF_USER_TEXT_ENCODING: string;
 	export const npm_execpath: string;
+	export const VIRTUAL_ENV: string;
 	export const PYDEVD_DISABLE_FILE_VALIDATION: string;
 	export const PATH: string;
 	export const npm_package_json: string;
@@ -96,10 +96,11 @@ declare module '$env/static/private' {
 	export const INFOPATH: string;
 	export const HOMEBREW_CELLAR: string;
 	export const OSLogRateLimit: string;
+	export const GIT_PAGER: string;
+	export const VIRTUAL_ENV_PROMPT: string;
 	export const npm_node_execpath: string;
 	export const npm_config_prefix: string;
 	export const COLORTERM: string;
-	export const NODE_ENV: string;
 }
 
 /**
@@ -148,7 +149,6 @@ declare module '$env/dynamic/private' {
 		COLOR: string;
 		npm_config_noproxy: string;
 		npm_config_local_prefix: string;
-		PYENV_VERSION: string;
 		USER: string;
 		COMMAND_MODE: string;
 		npm_config_globalconfig: string;
@@ -156,6 +156,7 @@ declare module '$env/dynamic/private' {
 		VSCODE_PROFILE_INITIALIZED: string;
 		__CF_USER_TEXT_ENCODING: string;
 		npm_execpath: string;
+		VIRTUAL_ENV: string;
 		PYDEVD_DISABLE_FILE_VALIDATION: string;
 		PATH: string;
 		npm_package_json: string;
@@ -199,10 +200,11 @@ declare module '$env/dynamic/private' {
 		INFOPATH: string;
 		HOMEBREW_CELLAR: string;
 		OSLogRateLimit: string;
+		GIT_PAGER: string;
+		VIRTUAL_ENV_PROMPT: string;
 		npm_node_execpath: string;
 		npm_config_prefix: string;
 		COLORTERM: string;
-		NODE_ENV: string;
 		[key: `PUBLIC_${string}`]: undefined;
 		[key: `${string}`]: string | undefined;
 	}
