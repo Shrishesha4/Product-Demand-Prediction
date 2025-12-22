@@ -4,7 +4,10 @@ env/
 venv/
 node_modules
 .node_deps_hash
+
 # Output
+.svelte-kit
+gui/.svelte-kit
 .output
 .vercel
 .netlify

@@ -68,7 +68,6 @@
 		</div>
 	</div>
 
-	<!-- Project & Contributors -->
 	<section class="project-section">
 		<h3>Demand Forecasting for E-Commerce Using Python LSTM Models Compared with ARIMA to Enhance Inventory Optimization</h3>
 		<p class="project-desc">Leveraging classical time-series modeling and deep learning to forecast e-commerce demand by benchmarking ARIMA against LSTM, with the explicit intent of identifying accuracy trade-offs under linear versus nonlinear demand dynamics. Implement a Python-based forecasting pipeline that ingests historical sales data, performs statistical stationarity and sequence modeling, and quantitatively compares ARIMA and LSTM outputs to drive data-backed inventory optimization decisions.</p>
@@ -80,17 +79,9 @@
 					<span class="contrib-name">Shrishesha Narmatesshvara</span>
 					<span class="contrib-id">192321183</span>
 				</div>
-				<div class="contrib-module">Module 3 — LSTM Model</div>
+				<div class="contrib-module">Module 2 — Model Integration</div>
 				<p class="contrib-desc">Responsible for LSTM architecture, training strategy, model persistence, and integration with the API for production forecasting and per-SKU distribution logic.</p>
-			</div>
-
-			<div class="contributor">
-				<div class="contrib-meta">
-					<span class="contrib-name">Anumaneni Somnath</span>
-					<span class="contrib-id">192472386</span>
-				</div>
-				<div class="contrib-module">Module 2 — ARIMA Forecasting</div>
-				<p class="contrib-desc">Focuses on SARIMAX modeling, seasonal and stationarity analysis, model selection, and benchmarking classical methods against LSTM.</p>
+				<p class="contrib-desc">SARIMAX modeling, seasonal and stationarity analysis, model selection, and benchmarking classical methods against LSTM.</p>
 			</div>
 
 			<div class="contributor">
@@ -99,7 +90,8 @@
 					<span class="contrib-id">192212273</span>
 				</div>
 				<div class="contrib-module">Module 1 — Data Preprocessing &amp; Feature Engineering</div>
-				<p class="contrib-desc">Leads data ingestion, cleaning, aggregation and feature engineering (including cyclical time features and handling missing values) that enable both ARIMA and LSTM experiments.</p>
+				<p class="contrib-desc">Leads data ingestion, cleaning, aggregation and feature engineering that enable both ARIMA and LSTM experiments.</p>
+				<p class="contrib-desc">Handles exploratory data analysis, outlier detection, and implements feature scaling and encoding pipelines to ensure data quality and compatibility for both ARIMA and LSTM models.</p>
 			</div>
 		</div>
 	</section>
