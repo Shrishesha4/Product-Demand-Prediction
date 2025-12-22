@@ -57,18 +57,47 @@
 			formData.append('test_file', testFile);
 			formData.append('seed', seed.toString());
 
+// Default to async background training to avoid timeouts
+formData.append('async_mode', '1');
+
 const response = await fetch(`${API_BASE}/api/train`, {
-				method: 'POST',
-				body: formData
-			});
+			method: 'POST',
+			body: formData
+		});
 
-			if (!response.ok) {
-				const errData = await response.json();
-				throw new Error(errData.detail || 'Training failed');
+			if (response.status === 202) {
+				const data = await response.json();
+				const jobId = data.job_id;
+				// Poll for completion
+				const poll = async () => {
+					try {
+						const st = await fetch(`${API_BASE}/api/train/status/${jobId}`);
+						if (!st.ok) throw new Error('Status fetch failed');
+						const j = await st.json();
+						if (j.status === 'completed') {
+						metrics = j.metrics;
+						loading = false;
+						return;
+					} else if (j.status === 'failed') {
+						loading = false;
+						throw new Error(j.error || 'Training failed');
+					} else {
+						setTimeout(poll, 2000);
+					}
+					} catch (err) {
+						loading = false;
+						error = typeof err === 'object' && err !== null && 'message' in err ? (err as { message: string }).message : String(err);
+					}
+				};
+				poll();
+			} else {
+				if (!response.ok) {
+					const errData = await response.json();
+					throw new Error(errData.detail || 'Training failed');
+				}
+				const data = await response.json();
+				metrics = data.metrics;
 			}
-
-			const data = await response.json();
-			metrics = data.metrics;
 		} catch (err: any) {
 			error = err.message || 'An error occurred during training';
 			console.error('Training error:', err);

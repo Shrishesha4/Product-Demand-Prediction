@@ -56,9 +56,12 @@ def set_global_seed(seed: int = DEFAULT_SEED):
 
 
 
-def load_and_aggregate(csv_path: str) -> pd.DataFrame:
+def load_and_aggregate(csv_path: str, sku_filter: str | None = None) -> pd.DataFrame:
 
     df = pd.read_csv(csv_path, parse_dates=["date"])
+    
+    if sku_filter:
+        df = df[df['sku_id'] == sku_filter]
 
     agg = df.groupby("date").agg(
         total_units=("units_sold", "sum"),
@@ -69,7 +72,7 @@ def load_and_aggregate(csv_path: str) -> pd.DataFrame:
     full_idx = pd.date_range(start=agg.index.min(), end=agg.index.max(), freq="D")
     agg = agg.reindex(full_idx)
     agg.index.name = "date"
-    # Ensure index has an explicit daily frequency so statsmodels won't emit ValueWarning
+
     try:
         agg.index.freq = "D"
     except Exception:
@@ -105,7 +108,6 @@ def mape(y_true: np.ndarray, y_pred: np.ndarray) -> float:
 
 def select_arima_order(series: pd.Series, p_max=3, d_vals=(0, 1), q_max=3) -> Tuple[int, int, int]:
 
-    # Ensure series has daily frequency to avoid ValueWarning in ARIMA/SARIMAX
     try:
         s = series.copy()
         if s.index.freq is None:
@@ -145,7 +147,7 @@ def select_sarimax_order(
 ) -> Tuple[Tuple[int, int, int], Tuple[int, int, int, int]]:
 
     train_series = series.copy()
-    # Ensure training series has explicit daily frequency to avoid statsmodels ValueWarning
+
     try:
         if train_series.index.freq is None:
             train_series = train_series.asfreq("D")
@@ -153,7 +155,7 @@ def select_sarimax_order(
         pass
 
     train_exog = exog.loc[train_series.index] if exog is not None else None
-    # Ensure exogenous DataFrame has daily frequency as well
+
     try:
         if train_exog is not None and train_exog.index.freq is None:
             train_exog = train_exog.asfreq("D")
@@ -219,14 +221,13 @@ def train_and_forecast_sarimax_on_train_test(
 ) -> tuple[pd.Series, object]:
 
     train_series = train_df["total_units"].copy()
-    # Ensure index has explicit daily frequency to suppress statsmodels ValueWarning
+
     try:
         if train_series.index.freq is None:
             train_series = train_series.asfreq("D")
     except Exception:
         pass
 
-    # Ensure test_df index has frequency too
     try:
         if test_df.index.freq is None:
             test_df = test_df.asfreq("D")
@@ -238,6 +239,10 @@ def train_and_forecast_sarimax_on_train_test(
 
     train_exog = train_df.loc[train_series.index, exog_cols] if exog_cols else None
 
+    import warnings
+    from statsmodels.tools.sm_exceptions import ConvergenceWarning
+    warnings.filterwarnings("ignore", category=ConvergenceWarning)
+
     order, seasonal = select_sarimax_order(train_series, exog=train_exog, s=seasonal_period)
     logging.info("Selected SARIMAX order %s seasonal %s using exog cols=%s", order, seasonal, exog_cols)
 
@@ -248,12 +253,20 @@ def train_and_forecast_sarimax_on_train_test(
         scaler = None
         train_exog_scaled = None
 
+    import warnings as _warnings
+    _warnings.filterwarnings("default", category=ConvergenceWarning)
+
     model = SARIMAX(train_series, exog=train_exog_scaled, order=order, seasonal_order=seasonal, enforce_stationarity=False, enforce_invertibility=False)
 
     res = None
     for method, mit in [("lbfgs", maxiter_final), ("bfgs", maxiter_final), ("powell", max(1000, maxiter_final))]:
         try:
-            res = model.fit(disp=False, method=method, maxiter=mit)
+
+            import warnings as _warnings
+            with _warnings.catch_warnings():
+                _warnings.filterwarnings('ignore', category=ConvergenceWarning)
+                res = model.fit(disp=False, method=method, maxiter=mit)
+
             converged = True
             if hasattr(res, "mle_retvals") and isinstance(res.mle_retvals, dict):
                 converged = bool(res.mle_retvals.get("converged", True))
@@ -302,8 +315,10 @@ def create_multi_step_windows(data: np.ndarray, n_in: int, n_out: int) -> Tuple[
 
 def build_lstm_seq2seq(input_shape: Tuple[int, int], n_out: int) -> tf.keras.Model:
 
+    from tensorflow.keras.layers import Input # type: ignore
     model = Sequential()
-    model.add(LSTM(128, input_shape=input_shape, return_sequences=False))
+    model.add(Input(shape=input_shape))
+    model.add(LSTM(128, return_sequences=False))
     model.add(Dropout(0.2))
     model.add(Dense(64, activation="relu"))
     model.add(Dense(n_out))
@@ -321,7 +336,6 @@ def train_and_forecast_lstm_on_train_test(
     verbose: int = 1,
 ) -> tuple[pd.Series, tf.keras.Model, MinMaxScaler]:
 
-    # Ablation flag: if set on train_df, remove cyclical features from LSTM inputs
     feature_cols = [c for c in train_df.columns if c in ("total_units", "avg_price", "promo_any", "dow_sin", "dow_cos", "doy_sin", "doy_cos")]
     train_arr = train_df[feature_cols].values.astype(float)
     test_arr = test_df[feature_cols].values.astype(float)
@@ -558,7 +572,6 @@ def main():
             logging.info("Saved SARIMAX summary to %s", sar_path)
         except Exception as exc:
             logging.warning("Failed to save SARIMAX diagnostics: %s", exc)
-
 
 if __name__ == "__main__":
     main()

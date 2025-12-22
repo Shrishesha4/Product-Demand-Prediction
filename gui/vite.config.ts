@@ -2,7 +2,7 @@ import tailwindcss from '@tailwindcss/vite';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 
-const allowedHostsEnv = process.env.ALLOWED_HOSTS || 'pdp.shrishesha.space,localhost,0.0.0.0,::1,127.0.0.1';
+const allowedHostsEnv = process.env.ALLOWED_HOSTS || 'localhost';
 const parseAllowedHosts = (v: string) => {
 	if (!v) return ['localhost'];
 	if (v === 'all' || v === '*') return 'all' as any;
@@ -18,7 +18,7 @@ let publicHost = process.env.PUBLIC_HOST || process.env.HMR_HOST || 'pdp.shrishe
 let hmrProtocol = process.env.HMR_PROTOCOL || (process.env.HTTPS ? 'wss' : 'ws');
 let defaultClientPort = (hmrProtocol === 'wss' ? 443 : 5173);
 
-// If FRONTEND_URL is set (e.g. https://pdp.shrishesha.space), prefer it and infer protocol and port
+// If FRONTEND_URL is set, prefer it and infer protocol and port
 if (rawFrontendUrl) {
 	try {
 		const parsed = new URL(rawFrontendUrl);

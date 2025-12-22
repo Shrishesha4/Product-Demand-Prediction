@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import ExplanationCard from '$lib/ExplanationCard.svelte';
 	import {
 		Chart,
 		LineController,
@@ -51,6 +52,15 @@
 	let skuComparisonChart: Chart | null = null;
 	let distributionChart: Chart | null = null;
 	let selectedSku: string = 'all';
+	let selectedExplanation: any = null;
+
+	$: {
+		if (forecast && selectedSku && forecast.forecasts[selectedSku]) {
+			selectedExplanation = forecast.forecasts[selectedSku].explanation;
+		} else {
+			selectedExplanation = null;
+		}
+	}
 
 	const API_BASE = import.meta.env.VITE_API_BASE || '';
 
@@ -112,7 +122,7 @@ const response = await fetch(`${API_BASE}/api/forecast_future`, {
 			['Date', 'Predicted Units', 'SKU'],
 			...currentData.map((item: any) => [
 				item.date, 
-				item.predicted_units.toFixed(2),
+				item.predicted_units.toFixed(0),
 				selectedSku
 			])
 		]
@@ -761,6 +771,10 @@ function adjustChartYAxis(chart:any, values:any[], ma7:any[], ma14:any[]) {
 			<div class="chart-container">
 				<canvas bind:this={chartCanvas}></canvas>
 			</div>
+
+			{#if selectedExplanation && selectedModel === 'lstm'}
+				<ExplanationCard explanation={selectedExplanation} />
+			{/if}
 
 			<div class="chart-container">
 				<canvas bind:this={skuComparisonCanvas}></canvas>

@@ -17,6 +17,7 @@ A small project that compares classical time series (SARIMAX/ARIMA) with Deep Le
 ## Features
 - Train and compare SARIMAX and LSTM models
 - LSTM model training, persistence and prediction endpoints
+- Predictions returned with `predicted_units` rounded to whole units (integers); `ma7`/`ma14` are rounded to 1 decimal for display
 - Multi-arch Docker builds (amd64 + arm64) via `docker buildx`
 - Frontend UI for uploading datasets, visualizing results and downloading trained model
 - Optional production-oriented compose with environment-driven configuration

@@ -40,7 +40,7 @@ def generate_dataset(
     start_date: str = START_DATE,
     end_date: str = END_DATE,
 ) -> pd.DataFrame:
-    """Generates a synthetic ecommerce demand dataset."""
+    
     rng = np.random.default_rng(seed)
 
     dates = pd.date_range(start=start_date, end=end_date, freq="D")
