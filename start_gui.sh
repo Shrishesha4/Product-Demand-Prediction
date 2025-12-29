@@ -9,6 +9,11 @@ ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BE_DIR="$ROOT_DIR/be"
 GUI_DIR="$ROOT_DIR/gui"
 BE_VENV="$BE_DIR/.venv"
+BACKEND_LOG="$ROOT_DIR/backend.log"
+FRONTEND_LOG="$ROOT_DIR/frontend.log"
+BACKEND_PID=""
+FRONTEND_PID=""
+TAIL_PID=""
 
 # Load project-wide .env if present so dev envs (e.g. PUBLIC_HOST/HMR_*) are applied
 if [[ -f "$ROOT_DIR/.env" ]]; then
@@ -114,55 +119,90 @@ else
     fi
 fi
 
+stop_servers() {
+    echo "🛑 Shutting down servers..."
+    if [ -n "${TAIL_PID:-}" ]; then pkill -P "$TAIL_PID" &>/dev/null || true; kill "$TAIL_PID" &>/dev/null || true; fi
+    if [ -n "${FRONTEND_PID:-}" ]; then pkill -P "$FRONTEND_PID" &>/dev/null || true; kill "$FRONTEND_PID" &>/dev/null || true; fi
+    if [ -n "${BACKEND_PID:-}" ]; then pkill -P "$BACKEND_PID" &>/dev/null || true; kill "$BACKEND_PID" &>/dev/null || true; fi
+    TAIL_PID=""
+    FRONTEND_PID=""
+    BACKEND_PID=""
+}
+
 cleanup() {
     echo ""
-    echo "🛑 Shutting down servers..."
-    if [ -n "${FRONTEND_PID:-}" ] && kill -0 "$FRONTEND_PID" >/dev/null 2>&1; then
-        kill "$FRONTEND_PID" || true
-    fi
-    if [ -n "${BACKEND_PID:-}" ] && kill -0 "$BACKEND_PID" >/dev/null 2>&1; then
-        kill "$BACKEND_PID" || true
-    fi
+    stop_servers
     deactivate >/dev/null 2>&1 || true
     exit 0
 }
 
 trap cleanup INT TERM
 
-echo "📡 Starting FastAPI backend on http://localhost:8000..."
+start_servers() {
+    clear
+    # Truncate log files
+    > "$BACKEND_LOG"
+    > "$FRONTEND_LOG"
 
-cd "$BE_DIR"
+    echo "📡 Starting FastAPI backend on http://localhost:8000..."
+    cd "$BE_DIR"
+    python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload > "$BACKEND_LOG" 2>&1 &
+    BACKEND_PID=$!
+    cd "$ROOT_DIR"
 
-python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload > /dev/null 2>&1 &
-BACKEND_PID=$!
-cd "$ROOT_DIR"
+    echo "⏳ Waiting for backend to become healthy..."
+    for i in {1..20}; do
+        if curl -fsS --max-time 1 http://127.0.0.1:8000/health >/dev/null 2>&1; then
+            echo "✅ Backend is healthy"
+            break
+        fi
+        if ! kill -0 "$BACKEND_PID" >/dev/null 2>&1; then
+            echo "❌ Backend failed to start. See $BACKEND_LOG"
+            exit 1
+        fi
+        sleep 0.5
+    done
 
-echo "⏳ Waiting for backend to become healthy..."
-for i in {1..12}; do
-    if curl -fsS --max-time 2 http://127.0.0.1:8000/health >/dev/null 2>&1; then
-        echo "✅ Backend is healthy"
-        break
-    fi
-    sleep 1
+    echo "🎨 Starting Svelte frontend on http://localhost:5173..."
+    cd "$GUI_DIR"
+    npm run dev > "$FRONTEND_LOG" 2>&1 &
+    FRONTEND_PID=$!
+    cd "$ROOT_DIR"
+
+    sleep 2
+
+    echo ""
+    echo "✅ Both servers are running!"
+    echo "   Frontend: http://localhost:5173"
+    echo "   Backend:  http://localhost:8000"
+    echo "   API Docs: http://localhost:8000/docs"
+    echo ""
+    echo "Press 'r' to restart, 'c' to clear screen, 'q' to quit"
+    echo ""
+
+    tail -f "$BACKEND_LOG" "$FRONTEND_LOG" &
+    TAIL_PID=$!
+}
+
+start_servers
+
+# Interactive loop
+while true; do
+    read -rsn1 input
+    case "$input" in
+        r|R)
+            echo; echo "🔄 Restarting servers..."
+            stop_servers
+            start_servers
+            ;;
+        c|C)
+            clear
+            echo "✅ Screen cleared."
+            echo "Press 'r' to restart, 'c' to clear screen, 'q' to quit"
+            ;;
+        q|Q)
+            cleanup
+            ;;
+    esac
+    sleep 0.1
 done
-
-echo "🎨 Starting Svelte frontend on http://localhost:5173..."
-cd "$GUI_DIR"
-
-npm run dev > /dev/null 2>&1 &
-FRONTEND_PID=$!
-cd "$ROOT_DIR"
-
-sleep 2
-
-echo ""
-echo "✅ Both servers are running!"
-echo ""
-echo "   Frontend: http://localhost:5173"
-echo "   Backend:  http://localhost:8000"
-echo "   API Docs: http://localhost:8000/docs"
-echo ""
-echo "Press Ctrl+C to stop both servers"
-echo ""
-
-wait

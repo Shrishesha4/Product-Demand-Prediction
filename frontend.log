@@ -1,0 +1,16 @@
+
+> gui@0.0.1 dev
+> dotenv -e ../.env -- vite dev
+
+VITE HMR config: {
+  hmrProtocol: 'wss',
+  hmrClientHost: 'pdp.shrishesha.space',
+  hmrClientPort: 443,
+  hmrServerPort: 5173,
+  hmrBindHost: '0.0.0.0'
+}
+
+  VITE v7.3.0  ready in 812 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: http://192.0.0.2:5173/
