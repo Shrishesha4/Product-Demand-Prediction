@@ -58,7 +58,73 @@ def set_global_seed(seed: int = DEFAULT_SEED):
 
 def load_and_aggregate(csv_path: str, sku_filter: str | None = None) -> pd.DataFrame:
 
-    df = pd.read_csv(csv_path, parse_dates=["date"])
+    df = pd.read_csv(csv_path)
+    
+    # Normalize column names (lowercase, strip whitespace)
+    df.columns = df.columns.str.strip().str.lower()
+    
+    # Map common column name variations
+    column_mapping = {
+        # date variations
+        'date': 'date',
+        'ds': 'date',
+        'datetime': 'date',
+        'time': 'date',
+        # sku variations
+        'sku_id': 'sku_id',
+        'sku': 'sku_id',
+        'product_id': 'sku_id',
+        'item_id': 'sku_id',
+        'product': 'sku_id',
+        # units variations
+        'units_sold': 'units_sold',
+        'units': 'units_sold',
+        'quantity': 'units_sold',
+        'qty': 'units_sold',
+        'sales': 'units_sold',
+        'demand': 'units_sold',
+        'y': 'units_sold',
+        # price variations
+        'price': 'price',
+        'unit_price': 'price',
+        'avg_price': 'price',
+        'cost': 'price',
+        # promo variations
+        'promotion_flag': 'promotion_flag',
+        'promo_flag': 'promotion_flag',
+        'promo': 'promotion_flag',
+        'promotion': 'promotion_flag',
+        'is_promo': 'promotion_flag',
+        'on_promotion': 'promotion_flag',
+    }
+    
+    # Apply column mapping
+    new_columns = {}
+    for col in df.columns:
+        if col in column_mapping:
+            new_columns[col] = column_mapping[col]
+    df = df.rename(columns=new_columns)
+    
+    # Check required columns exist
+    required_cols = ['date', 'units_sold']
+    missing = [c for c in required_cols if c not in df.columns]
+    if missing:
+        raise ValueError(f"Missing required columns: {missing}. Found columns: {list(df.columns)}")
+    
+    # Add default sku_id if not present
+    if 'sku_id' not in df.columns:
+        df['sku_id'] = 'DEFAULT_SKU'
+    
+    # Add default price if not present
+    if 'price' not in df.columns:
+        df['price'] = 100.0  # Default price
+    
+    # Add default promotion_flag if not present
+    if 'promotion_flag' not in df.columns:
+        df['promotion_flag'] = 0
+    
+    # Parse date column
+    df['date'] = pd.to_datetime(df['date'])
     
     if sku_filter:
         df = df[df['sku_id'] == sku_filter]

@@ -327,7 +327,38 @@ async def forecast_future(
             with open(data_path, "wb") as f:
                 shutil.copyfileobj(data_file.file, f)
 
-            raw_df = pd.read_csv(data_path)
+            raw_df = pd.read_csv(data_path, low_memory=False)
+            
+            # Normalize column names (lowercase, strip whitespace)
+            raw_df.columns = raw_df.columns.str.strip().str.lower()
+            
+            # Map common column name variations
+            column_mapping = {
+                'date': 'date', 'ds': 'date', 'datetime': 'date', 'time': 'date',
+                'sku_id': 'sku_id', 'sku': 'sku_id', 'product_id': 'sku_id', 'item_id': 'sku_id', 'product': 'sku_id',
+                'units_sold': 'units_sold', 'units': 'units_sold', 'quantity': 'units_sold', 'qty': 'units_sold', 
+                'sales': 'units_sold', 'demand': 'units_sold', 'y': 'units_sold',
+                'price': 'price', 'unit_price': 'price', 'avg_price': 'price', 'cost': 'price',
+                'promotion_flag': 'promotion_flag', 'promo_flag': 'promotion_flag', 'promo': 'promotion_flag',
+                'promotion': 'promotion_flag', 'is_promo': 'promotion_flag', 'on_promotion': 'promotion_flag',
+            }
+            new_columns = {col: column_mapping[col] for col in raw_df.columns if col in column_mapping}
+            raw_df = raw_df.rename(columns=new_columns)
+            
+            # Check required columns
+            if 'date' not in raw_df.columns:
+                raise ValueError(f"Missing 'date' column. Found columns: {list(raw_df.columns)}")
+            if 'units_sold' not in raw_df.columns:
+                raise ValueError(f"Missing 'units_sold' column. Found columns: {list(raw_df.columns)}")
+            
+            # Add defaults for optional columns
+            if 'sku_id' not in raw_df.columns:
+                raw_df['sku_id'] = 'DEFAULT_SKU'
+            if 'price' not in raw_df.columns:
+                raw_df['price'] = 100.0
+            if 'promotion_flag' not in raw_df.columns:
+                raw_df['promotion_flag'] = 0
+            
             raw_df['date'] = pd.to_datetime(raw_df['date'])
             raw_df = raw_df.sort_values(['sku_id', 'date'])
             
@@ -498,8 +529,12 @@ async def forecast_future(
                 sku_df['ma14'] = sku_df['ma14'].round(1)
 
                 sku_df['date'] = sku_df['date'].dt.strftime('%Y-%m-%d')
+                daily_records = sku_df[['date', 'predicted_units', 'ma7', 'ma14']].to_dict('records')
+                # Downsample for chart display (max 500 points)
+                daily_chart = downsample_for_chart(daily_records, max_points=500)
                 sku_forecasts[sku] = {
-                    'daily': sku_df[['date', 'predicted_units', 'ma7', 'ma14']].to_dict('records'),
+                    'daily': daily_chart,
+                    'daily_count': len(daily_records),
                     'quarterly': quarterly[['quarter_label', 'predicted_units', 'start_date', 'end_date']].to_dict('records')
                 }
             
@@ -515,6 +550,10 @@ async def forecast_future(
             forecast_df['ma14'] = forecast_df['ma14'].round(1)
 
             forecast_df['date'] = forecast_df['date'].dt.strftime('%Y-%m-%d')
+            
+            total_daily_records = forecast_df[['date', 'predicted_units', 'ma7', 'ma14']].to_dict('records')
+            # Downsample for chart display (max 500 points)
+            total_daily_chart = downsample_for_chart(total_daily_records, max_points=500)
 
             return JSONResponse(content={
                 "status": "success",
@@ -522,7 +561,8 @@ async def forecast_future(
                 "forecast_horizon": f"{quarters} quarters ({forecast_days} days)",
                 "skus": list(skus),
                 "forecasts": sku_forecasts,
-                "total_daily": forecast_df[['date', 'predicted_units', 'ma7', 'ma14']].to_dict('records')
+                "total_daily": total_daily_chart,
+                "total_daily_count": len(total_daily_records)
             })
 
     except Exception as e:
@@ -554,6 +594,40 @@ async def download_model():
         filename="lstm_model.keras",
         media_type="application/octet-stream"
     )
+
+def downsample_for_chart(data: list, max_points: int = 500) -> list:
+    """Downsample data for chart display while preserving trends."""
+    if len(data) <= max_points:
+        return data
+    
+    # Calculate step size to get approximately max_points
+    step = len(data) / max_points
+    result = []
+    
+    for i in range(max_points):
+        start_idx = int(i * step)
+        end_idx = int((i + 1) * step)
+        if end_idx > len(data):
+            end_idx = len(data)
+        
+        # Take the data point and aggregate if needed
+        chunk = data[start_idx:end_idx]
+        if chunk:
+            # Use the middle point's date, average the values
+            mid_idx = len(chunk) // 2
+            point = chunk[mid_idx].copy()
+            if len(chunk) > 1:
+                point['predicted_units'] = int(sum(c['predicted_units'] for c in chunk) / len(chunk))
+                if 'ma7' in point:
+                    ma7_vals = [c['ma7'] for c in chunk if c.get('ma7') is not None]
+                    point['ma7'] = round(sum(ma7_vals) / len(ma7_vals), 1) if ma7_vals else None
+                if 'ma14' in point:
+                    ma14_vals = [c['ma14'] for c in chunk if c.get('ma14') is not None]
+                    point['ma14'] = round(sum(ma14_vals) / len(ma14_vals), 1) if ma14_vals else None
+            result.append(point)
+    
+    return result
+
 
 def predict_future_with_lstm(
     model,

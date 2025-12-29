@@ -16,3 +16,27 @@ Port 5173 is in use, trying another one...
   ➜  Local:   http://localhost:511:17:30 PM [vite] (ssr) page reload .svelte-kit/generated/server/internal.js
 1:17:30 PM [vite] (ssr) page reload .svelte-kit/generated/root.js
 1:17:30 PM [vite] (ssr) page reload .svelte-kit/generated/root.svelte
+1:27:02 PM [vite] (client) hmr update /src/routes/predict/+page.svelte, /src/routes/layout.css
+1:27:02 PM [vite] (ssr) page reload src/routes/predict/+page.svelte
+1:27:22 PM [vite] (client) hmr update /src/routes/predict/+page.svelte, /src/routes/layout.css
+1:27:22 PM [vite] (ssr) page reload src/routes/predict/+page.svelte
+1:27:27 PM [vite] (client) hmr update /src/routes/layout.css
+1:27:27 PM [vite] (ssr) page reload src/routes/predict/+page.svelte
+1:27:52 PM [vite] (client) hmr update /src/routes/predict/+page.svelte, /src/routes/layout.css
+1:27:52 PM [vite] (ssr) page reload src/routes/predict/+page.svelte
+1:28:27 PM [vite] (client) hmr update /src/routes/predict/+page.svelte, /src/routes/layout.css
+1:28:27 PM [vite] (ssr) page reload src/routes/predict/+page.svelte
+1:28:54 PM [vite] (client) hmr update /src/routes/predict/+page.svelte, /src/routes/layout.css
+1:28:54 PM [vite] (ssr) page reload src/routes/predict/+page.svelte
+1:29:55 PM [vite] (client) hmr update /src/routes/predict/+page.svelte, /src/routes/layout.css
+1:29:55 PM [vite] (ssr) page reload src/routes/predict/+page.svelte
+1:30:02 PM [vite] (client) hmr update /src/routes/layout.css
+1:30:02 PM [vite] (ssr) page reload src/routes/predict/+page.svelte
+1:30:28 PM [vite] (client) hmr update /src/routes/predict/+page.svelte, /src/routes/layout.css
+1:30:28 PM [vite] (ssr) page reload src/routes/predict/+page.svelte
+1:30:32 PM [vite] (client) hmr update /src/routes/layout.css
+1:30:32 PM [vite] (ssr) page reload src/routes/predict/+page.svelte
+1:34:22 PM [vite] (client) hmr update /src/routes/predict/+page.svelte, /src/routes/layout.css
+1:34:22 PM [vite] (ssr) page reload src/routes/predict/+page.svelte
+1:40:51 PM [vite] (client) hmr update /src/routes/layout.css
+1:40:51 PM [vite] (ssr) page reload src/routes/predict/+page.svelte

@@ -14,7 +14,8 @@
 		Filler,
 		BarController,
 		BarElement,
-		type ChartConfiguration
+		type ChartConfiguration,
+		Decimation
 	} from 'chart.js';
 
 	onMount(() => {
@@ -29,7 +30,8 @@
 			Legend,
 			Filler,
 			BarController,
-			BarElement
+			BarElement,
+			Decimation
 		);
 	});
 
@@ -63,6 +65,34 @@
 	}
 
 	const API_BASE = import.meta.env.VITE_API_BASE || '';
+
+	// Downsample data for charts to prevent browser freezing
+	function downsampleForChart(data: any[], maxPoints: number = 400): any[] {
+		if (!data || data.length <= maxPoints) return data;
+		
+		const step = data.length / maxPoints;
+		const result: any[] = [];
+		
+		for (let i = 0; i < maxPoints; i++) {
+			const startIdx = Math.floor(i * step);
+			const endIdx = Math.floor((i + 1) * step);
+			const chunk = data.slice(startIdx, Math.min(endIdx, data.length));
+			
+			if (chunk.length > 0) {
+				const midIdx = Math.floor(chunk.length / 2);
+				const point = { ...chunk[midIdx] };
+				
+				// Average numerical values for smoother visualization
+				if (chunk.length > 1) {
+					const avgUnits = chunk.reduce((sum, c) => sum + (c.predicted_units || 0), 0) / chunk.length;
+					point.predicted_units = Math.round(avgUnits);
+				}
+				result.push(point);
+			}
+		}
+		
+		return result;
+	}
 
 	function handleFileChange(e: Event) {
 		const target = e.target as HTMLInputElement;
@@ -161,11 +191,14 @@ const response = await fetch(`${API_BASE}/api/forecast_future`, {
 
 		console.log('renderChart called for SKU:', selectedSku);
 
-		const currentData = selectedSku === 'all' 
+		const rawData = selectedSku === 'all' 
 			? forecast.total_daily 
 			: forecast.forecasts[selectedSku].daily;
 
-		console.log('currentData length:', currentData?.length);
+		// Data is already downsampled by backend, but apply client-side limit as safety
+		const currentData = downsampleForChart(rawData, 500);
+
+		console.log('currentData length:', currentData?.length, '(raw:', rawData?.length, ')');
 
 		if (chart) {
 			chart.destroy();
@@ -211,11 +244,17 @@ const response = await fetch(`${API_BASE}/api/forecast_future`, {
 			options: {
 				responsive: true,
 				maintainAspectRatio: false,
+				animation: false, // Disable animation for performance
 				interaction: {
 					mode: 'index',
 					intersect: false
 				},
 				plugins: {
+					decimation: {
+						enabled: true,
+						algorithm: 'lttb',
+						samples: 300
+					},
 					title: {
 						display: true,
 						text: `Future Demand Forecast - ${forecast.forecast_horizon} (${forecast.model})`,
@@ -444,6 +483,7 @@ function adjustChartYAxis(chart:any, values:any[], ma7:any[], ma14:any[]) {
 
 		if (weekdayChart) weekdayChart.destroy();
 
+		// Use full data for aggregation (already downsampled from backend)
 		const dailyData = forecast.forecasts[selectedSku].daily;
 		const weekdayMap: any = { 0: 'Mon', 1: 'Tue', 2: 'Wed', 3: 'Thu', 4: 'Fri', 5: 'Sat', 6: 'Sun' };
 		const weekdayAgg: any = { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] };
@@ -474,6 +514,7 @@ function adjustChartYAxis(chart:any, values:any[], ma7:any[], ma14:any[]) {
 			options: {
 				responsive: true,
 				maintainAspectRatio: false,
+				animation: false,
 				plugins: {
 					title: { display: true, text: `Day-of-Week Pattern - ${selectedSku}`, font: { size: 16, weight: 'bold' } },
 					legend: { display: false }
@@ -490,6 +531,7 @@ function adjustChartYAxis(chart:any, values:any[], ma7:any[], ma14:any[]) {
 
 		if (monthlyChart) monthlyChart.destroy();
 
+		// Use data from backend (already downsampled)
 		const dailyData = forecast.forecasts[selectedSku].daily;
 		const monthlyAgg: any = {};
 
@@ -518,6 +560,7 @@ function adjustChartYAxis(chart:any, values:any[], ma7:any[], ma14:any[]) {
 			options: {
 				responsive: true,
 				maintainAspectRatio: false,
+				animation: false,
 				plugins: {
 					title: { display: true, text: `Monthly Forecast - ${selectedSku}`, font: { size: 16, weight: 'bold' } },
 					legend: { display: false }
@@ -536,8 +579,13 @@ function adjustChartYAxis(chart:any, values:any[], ma7:any[], ma14:any[]) {
 		if (skuComparisonChart) skuComparisonChart.destroy();
 
 		const colors = ['#f97316', '#3b82f6', '#22c55e', '#a855f7', '#eab308', '#ec4899'];
+		
+		// Get labels from first SKU (downsampled)
+		const firstSkuDaily = downsampleForChart(forecast.forecasts[forecast.skus[0]].daily, 300);
+		const labels = firstSkuDaily.map((d: any) => d.date);
+		
 		const datasets = forecast.skus.map((sku: string, idx: number) => {
-			const daily = forecast.forecasts[sku].daily;
+			const daily = downsampleForChart(forecast.forecasts[sku].daily, 300);
 			const values = daily.map((d: any) => d.predicted_units);
 			const ma14_client = calculateMovingAverage(values, 14);
 			return {
@@ -551,14 +599,13 @@ function adjustChartYAxis(chart:any, values:any[], ma7:any[], ma14:any[]) {
 			};
 		});
 
-		const labels = forecast.forecasts[forecast.skus[0]].daily.map((d: any) => d.date);
-
 		const cfg: ChartConfiguration = {
 			type: 'line',
 			data: { labels, datasets },
 			options: {
 				responsive: true,
 				maintainAspectRatio: false,
+				animation: false,
 				plugins: {
 					title: { display: true, text: 'SKU Forecast Comparison', font: { size: 16, weight: 'bold' } },
 					legend: { display: true, position: 'top' }
@@ -591,12 +638,11 @@ function adjustChartYAxis(chart:any, values:any[], ma7:any[], ma14:any[]) {
 
 		const dailyData = forecast.forecasts[selectedSku].daily;
 		const values = dailyData.map((d: any) => d.predicted_units);
-		const ma14_for_dist = calculateMovingAverage(values, 14);
 
 		const min = Math.min(...values);
 		const max = Math.max(...values);
 		const binCount = 15;
-		const binSize = (max - min) / binCount;
+		const binSize = (max - min) / binCount || 1;
 		const bins = Array(binCount).fill(0);
 		const binLabels = [];
 
@@ -608,7 +654,7 @@ function adjustChartYAxis(chart:any, values:any[], ma7:any[], ma14:any[]) {
 
 		values.forEach((v: number) => {
 			const binIdx = Math.min(Math.floor((v - min) / binSize), binCount - 1);
-			bins[binIdx]++;
+			if (binIdx >= 0 && binIdx < binCount) bins[binIdx]++;
 		});
 
 		const cfg: ChartConfiguration = {
@@ -616,7 +662,7 @@ function adjustChartYAxis(chart:any, values:any[], ma7:any[], ma14:any[]) {
 			data: {
 				labels: binLabels,
 				datasets: [{
-					label: 'Frequency (MA14)',
+					label: 'Frequency',
 					data: bins,
 					backgroundColor: 'rgba(168, 85, 247, 0.7)',
 					borderColor: '#a855f7',
@@ -626,6 +672,7 @@ function adjustChartYAxis(chart:any, values:any[], ma7:any[], ma14:any[]) {
 			options: {
 				responsive: true,
 				maintainAspectRatio: false,
+				animation: false,
 				plugins: {
 					title: { display: true, text: `Forecast Distribution - ${selectedSku}`, font: { size: 16, weight: 'bold' } },
 					legend: { display: false }
@@ -644,8 +691,6 @@ function adjustChartYAxis(chart:any, values:any[], ma7:any[], ma14:any[]) {
 		console.log('Reactive: calling renderChart');
 		setTimeout(() => renderChart(), 0);
 	}
-
-	$: if (forecast && chartCanvas) { setTimeout(() => renderChart(), 0); }
 
 	$: if (forecast && quarterlyChartCanvas && selectedSku !== 'all') {
 		console.log('Reactive: calling renderQuarterlyChart');
