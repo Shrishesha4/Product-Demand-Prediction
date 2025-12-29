@@ -20,6 +20,7 @@
 	let testFile: File | null = null;
 	let seed = 42;
 	let loading = false;
+	let jobStatus = ''; // 'running' | 'completed' | 'failed'
 	let metrics: any = null;
 	let error = '';
 	let chartCanvas: HTMLCanvasElement;
@@ -48,6 +49,7 @@
 		}
 
 		loading = true;
+		jobStatus = 'running';
 		error = '';
 		metrics = null;
 
@@ -74,18 +76,23 @@ const response = await fetch(`${API_BASE}/api/train`, {
 						const st = await fetch(`${API_BASE}/api/train/status/${jobId}`);
 						if (!st.ok) throw new Error('Status fetch failed');
 						const j = await st.json();
+						jobStatus = j.status || jobStatus;
 						if (j.status === 'completed') {
-						metrics = j.metrics;
-						loading = false;
-						return;
-					} else if (j.status === 'failed') {
-						loading = false;
-						throw new Error(j.error || 'Training failed');
-					} else {
-						setTimeout(poll, 2000);
-					}
+							metrics = j.metrics;
+							jobStatus = 'completed';
+							loading = false;
+							return;
+						} else if (j.status === 'failed') {
+							jobStatus = 'failed';
+							loading = false;
+							error = j.error || 'Training failed';
+							return;
+						} else {
+							setTimeout(poll, 2000);
+						}
 					} catch (err) {
 						loading = false;
+						jobStatus = 'failed';
 						error = typeof err === 'object' && err !== null && 'message' in err ? (err as { message: string }).message : String(err);
 					}
 				};
@@ -100,9 +107,9 @@ const response = await fetch(`${API_BASE}/api/train`, {
 			}
 		} catch (err: any) {
 			error = err.message || 'An error occurred during training';
-			console.error('Training error:', err);
-		} finally {
+			jobStatus = 'failed';
 			loading = false;
+			console.error('Training error:', err);
 		}
 	}
 
@@ -265,7 +272,11 @@ const response = await fetch(`${API_BASE}/api/model/download`);
 	<button class="train-btn" on:click={handleTrain} disabled={loading || !trainFile || !testFile}>
 		{#if loading}
 			<span class="spinner"></span>
-			Training Models...
+			{#if jobStatus === 'running'}
+				Training Models... (Status: {jobStatus})
+			{:else}
+				Processing...
+			{/if}
 		{:else}
 			Train Models
 		{/if}

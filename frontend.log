@@ -9,8 +9,10 @@ VITE HMR config: {
   hmrServerPort: 5173,
   hmrBindHost: '0.0.0.0'
 }
+Port 5173 is in use, trying another one...
 
-  VITE v7.3.0  ready in 812 ms
+  VITE v7.3.0  ready in 857 ms
 
-  ➜  Local:   http://localhost:5173/
-  ➜  Network: http://192.0.0.2:5173/
+  ➜  Local:   http://localhost:511:17:30 PM [vite] (ssr) page reload .svelte-kit/generated/server/internal.js
+1:17:30 PM [vite] (ssr) page reload .svelte-kit/generated/root.js
+1:17:30 PM [vite] (ssr) page reload .svelte-kit/generated/root.svelte

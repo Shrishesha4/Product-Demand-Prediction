@@ -1,37 +1,10 @@
 INFO:     Will watch for changes in these directories: ['/Users/shrishesha/Developer/temp/demand_prediction/be']
 INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-INFO:     Started reloader process [82299] using WatchFiles
+INFO:     Started reloader process [85443] using WatchFiles
 /Users/shrishesha/Developer/temp/demand_prediction/be/.venv/lib/python3.11/site-packages/keras/src/export/tf2onnx_lib.py:8: FutureWarning: In the future `np.object` will be defined as the corresponding NumPy scalar.
   if not hasattr(np, "object"):
 INFO:main:CORS allowed origins: ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:8080', 'https://pdp.shrishesha.space']
-INFO:     Started server process [82303]
+INFO:     Started server process [85447]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
-INFO:     127.0.0.1:50051 - "GET /health HTTP/1.1" 200 OK
-INFO:main:Background training job ea7f4f91-9070-4b06-bf16-4f03dbbf67cc started with seed=42
-INFO:     192.0.0.2:50074 - "POST /train HTTP/1.1" 202 Accepted
-ERROR:main:Background training job ea7f4f91-9070-4b06-bf16-4f03dbbf67cc failed: [Errno 2] No such file or directory: '/var/folders/kk/hvrjb9ss5z3fg5y7k5pyq7bh0000gn/T/tmpnzi9l2sh/train.csv'
-Traceback (most recent call last):
-  File "/Users/shrishesha/Developer/temp/demand_prediction/be/main.py", line 105, in _run_training_job
-    train_df = load_and_aggregate(str(train_path))
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/shrishesha/Developer/temp/demand_prediction/be/core/forecast_pipeline.py", line 61, in load_and_aggregate
-    df = pd.read_csv(csv_path, parse_dates=["date"])
-         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/shrishesha/Developer/temp/demand_prediction/be/.venv/lib/python3.11/site-packages/pandas/io/parsers/readers.py", line 1026, in read_csv
-    return _read(filepath_or_buffer, kwds)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/shrishesha/Developer/temp/demand_prediction/be/.venv/lib/python3.11/site-packages/pandas/io/parsers/readers.py", line 620, in _read
-    parser = TextFileReader(filepath_or_buffer, **kwds)
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/shrishesha/Developer/temp/demand_prediction/be/.venv/lib/python3.11/site-packages/pandas/io/parsers/readers.py", line 1620, in __init__
-    self._engine = self._make_engine(f, self.engine)
-                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/shrishesha/Developer/temp/demand_prediction/be/.venv/lib/python3.11/site-packages/pandas/io/parsers/readers.py", line 1880, in _make_engine
-    self.handles = get_handle(
-                   ^^^^^^^^^^^
-  File "/Users/shrishesha/Developer/temp/demand_prediction/be/.venv/lib/python3.11/site-packages/pandas/io/common.py", line 873, in get_handle
-    handle = open(
-             ^^^^^
-FileNotFoundError: [Errno 2] No such file or directory: '/var/folders/kk/hvrjb9ss5z3fg5y7k5pyq7bh0000gn/T/tmpnzi9l2sh/train.csv'
-INFO:     192.0.0.2:50075 - "GET /train/status/ea7f4f91-9070-4b06-bf16-4f03dbbf67cc HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51128 - "GET /health HTTP/1.1" 200 OK

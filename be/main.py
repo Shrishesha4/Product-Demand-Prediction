@@ -16,7 +16,7 @@ if env_path.exists():
     load_dotenv(dotenv_path=env_path)
     
 import pandas as pd
-from fastapi import FastAPI, File, UploadFile, HTTPException, Form
+from fastapi import FastAPI, File, UploadFile, HTTPException, Form, BackgroundTasks
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -95,15 +95,23 @@ TRAIN_JOBS: Dict[str, dict] = {}
 TRAIN_JOBS_LOCK = threading.Lock()
 
 
-def _run_training_job(train_path: str, test_path: str, seed: int, job_id: str):
+def _run_training_job(train_contents: bytes, test_contents: bytes, seed: int, job_id: str):
     try:
-        with TRAIN_JOBS_LOCK:
-            TRAIN_JOBS[job_id]['status'] = 'running'
-        set_global_seed(seed)
-        logger.info("Background training job %s started with seed=%d", job_id, seed)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            train_path = Path(tmpdir) / "train.csv"
+            test_path = Path(tmpdir) / "test.csv"
+            with open(train_path, "wb") as f:
+                f.write(train_contents)
+            with open(test_path, "wb") as f:
+                f.write(test_contents)
 
-        train_df = load_and_aggregate(str(train_path))
-        test_df = load_and_aggregate(str(test_path))
+            with TRAIN_JOBS_LOCK:
+                TRAIN_JOBS[job_id]['status'] = 'running'
+            set_global_seed(seed)
+            logger.info("Background training job %s started with seed=%d", job_id, seed)
+
+            train_df = load_and_aggregate(str(train_path))
+            test_df = load_and_aggregate(str(test_path))
         logger.info("Loaded train (%d days) and test (%d days)", len(train_df), len(test_df))
 
         logger.info("Training SARIMAX...")
@@ -179,35 +187,31 @@ async def train_models(
     test_file: UploadFile = File(..., description='Test CSV file'),
     seed: int = Form(42),
     async_mode: int = Form(1),
+    background_tasks: BackgroundTasks = None
 ):
     try:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            train_path = Path(tmpdir) / 'train.csv'
-            test_path = Path(tmpdir) / 'test.csv'
+        # Read the file contents here, before the request is closed
+        train_contents = await train_file.read()
+        test_contents = await test_file.read()
 
-            with open(train_path, 'wb') as f:
-                shutil.copyfileobj(train_file.file, f)
-            with open(test_path, 'wb') as f:
-                shutil.copyfileobj(test_file.file, f)
+        if async_mode:
+            job_id = str(uuid.uuid4())
+            with TRAIN_JOBS_LOCK:
+                TRAIN_JOBS[job_id] = {'status': 'queued', 'metrics': None, 'error': None}
+            t = threading.Thread(target=_run_training_job, args=(train_contents, test_contents, seed, job_id), daemon=True)
+            t.start()
+            return JSONResponse(status_code=202, content={'status': 'queued', 'job_id': job_id, 'status_url': f'/api/train/status/{job_id}'})
+        else:
 
-            if async_mode:
-                job_id = str(uuid.uuid4())
-                with TRAIN_JOBS_LOCK:
-                    TRAIN_JOBS[job_id] = {'status': 'queued', 'metrics': None, 'error': None}
-                t = threading.Thread(target=_run_training_job, args=(str(train_path), str(test_path), seed, job_id), daemon=True)
-                t.start()
-                return JSONResponse(status_code=202, content={'status': 'queued', 'job_id': job_id, 'status_url': f'/api/train/status/{job_id}'})
-            else:
+            sync_id = 'sync'
+            with TRAIN_JOBS_LOCK:
+                TRAIN_JOBS[sync_id] = {'status': 'running', 'metrics': None, 'error': None}
+            _run_training_job(train_contents, test_contents, seed, sync_id)
+            metrics = TRAIN_JOBS.get(sync_id, {}).get('metrics')
 
-                sync_id = 'sync'
-                with TRAIN_JOBS_LOCK:
-                    TRAIN_JOBS[sync_id] = {'status': 'running', 'metrics': None, 'error': None}
-                _run_training_job(str(train_path), str(test_path), seed, sync_id)
-                metrics = TRAIN_JOBS.get(sync_id, {}).get('metrics')
-
-                with TRAIN_JOBS_LOCK:
-                    TRAIN_JOBS.pop(sync_id, None)
-                return JSONResponse(content={'status': 'success', 'metrics': metrics})
+            with TRAIN_JOBS_LOCK:
+                TRAIN_JOBS.pop(sync_id, None)
+            return JSONResponse(content={'status': 'success', 'metrics': metrics})
     except Exception as e:
         logger.error('Training failed to start: %s', str(e), exc_info=True)
         raise HTTPException(status_code=500, detail=f'Training failed to start: {str(e)}')

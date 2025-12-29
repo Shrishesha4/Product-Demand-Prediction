@@ -2,8 +2,8 @@
 ===========================================================================================
 Dep. Variable:                         total_units   No. Observations:                  730
 Model:             SARIMAX(2, 0, 2)x(0, 1, [1], 7)   Log Likelihood               -4554.149
-Date:                             Mon, 22 Dec 2025   AIC                           9128.299
-Time:                                     09:46:21   BIC                           9173.993
+Date:                             Mon, 29 Dec 2025   AIC                           9128.299
+Time:                                     13:14:32   BIC                           9173.993
 Sample:                                 01-01-2022   HQIC                          9145.947
                                       - 12-31-2023                                         
 Covariance Type:                               opg                                         
