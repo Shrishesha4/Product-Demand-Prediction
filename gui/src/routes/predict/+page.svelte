@@ -36,7 +36,7 @@
 	});
 
 	let dataFile: File | null = null;
-	let quarters = 4;
+	let quarters = 2;
 	let loading = false;
 	let forecast: any = null;
 	let error = '';
@@ -54,6 +54,7 @@
 	let distributionChart: Chart | null = null;
 	let selectedSku: string = 'all';
 	let selectedExplanation: any = null;
+	let selectedModel: string = 'hybrid';
 
 	$: {
 		if (forecast && selectedSku && forecast.forecasts[selectedSku]) {
