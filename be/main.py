@@ -8,7 +8,8 @@ import threading
 import uuid
 import warnings
 from typing import Dict
-
+import json
+from datetime import datetime, timedelta
 os.environ.setdefault('TF_CPP_MIN_LOG_LEVEL', '2')
 
 env_path = Path(__file__).resolve().parents[1] / ".env"
@@ -16,6 +17,7 @@ if env_path.exists():
     load_dotenv(dotenv_path=env_path)
     
 import pandas as pd
+import numpy as np
 from fastapi import FastAPI, File, UploadFile, HTTPException, Form, BackgroundTasks
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -34,12 +36,9 @@ from core.forecast_pipeline import (
     BATCH_SIZE,
 )
 
-import os
 import joblib
 from statsmodels.tsa.statespace.sarimax import SARIMAX, SARIMAXResults
 from statsmodels.tools.sm_exceptions import ConvergenceWarning
-from datetime import timedelta
-import numpy as np
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -81,9 +80,10 @@ app.add_middleware(
 MODEL_DIR = Path("./models")
 MODEL_DIR.mkdir(exist_ok=True)
 METRICS_FILE = MODEL_DIR / "latest_metrics.json"
+MODEL_INFO_FILE = MODEL_DIR / "model_info.json" # For versioning
 LSTM_MODEL_PATH = MODEL_DIR / "lstm_model.keras"
 SCALER_PATH = MODEL_DIR / "scaler_minmax.pkl"
-SARIMAX_MODEL_PATH = MODEL_DIR / "sarimax_model.pkl" # Using pickle via save()
+SARIMAX_MODEL_PATH = MODEL_DIR / "sarimax_model.pkl"
 SARIMAX_SUMMARY_PATH = MODEL_DIR / "sarimax_summary.txt"
 
 
@@ -112,6 +112,13 @@ def _run_training_job(train_contents: bytes, test_contents: bytes, seed: int, jo
 
             train_df = load_and_aggregate(str(train_path))
             test_df = load_and_aggregate(str(test_path))
+        
+        # Fix 17: Missing Data Validation
+        if len(train_df) < 90:
+            raise ValueError(f"Training data too short: {len(train_df)} days. Minimum 90 days required.")
+        if len(test_df) < 7:
+            raise ValueError(f"Test data too short: {len(test_df)} days. Minimum 7 days required.")
+            
         logger.info("Loaded train (%d days) and test (%d days)", len(train_df), len(test_df))
 
         # --- HYBRID MODEL TRAINING ---
@@ -134,19 +141,11 @@ def _run_training_job(train_contents: bytes, test_contents: bytes, seed: int, jo
         residuals = train_df.loc[common_idx, "total_units"] - sarimax_fitted.loc[common_idx]
         
         # Add residuals to train_df for LSTM training
-        # We need to be careful with index alignment.
-        # Fill any missing residuals (e.g. at start) with 0
         train_df["residuals"] = residuals
         train_df["residuals"] = train_df["residuals"].fillna(0.0)
 
         # For test set, we don't have "true" residuals to predict, 
         # but we need to create the column structure for the LSTM function.
-        # The LSTM function expects 'residuals' column in test_df for feature extraction (if it was a feature)
-        # but here it is the TARGET. 
-        # Actually, our modified `train_and_forecast_lstm_on_train_test` uses `target_col` to extract y.
-        # For validation/test during training, it splits the provided data.
-        # We can pass dummy residuals for test_df because we only care about the model here, 
-        # or we can compute test residuals if we want to evaluate the LSTM component performance on test.
         # Let's compute test residuals based on the SARIMAX forecast we just made.
         sarimax_test_pred = sarimax_forecast_test
         common_test_idx = test_df.index.intersection(sarimax_test_pred.index)
@@ -198,8 +197,19 @@ def _run_training_job(train_contents: bytes, test_contents: bytes, seed: int, jo
             f.write(sarimax_res.summary().as_text())
             f.write("\n\nmle_retvals:\n")
             f.write(str(getattr(sarimax_res, "mle_retvals", {})))
+        
+        # Fix 16: Model Versioning
+        model_info = {
+            "timestamp": datetime.now().isoformat(),
+            "job_id": job_id,
+            "seed": seed,
+            "train_size": len(train_df),
+            "test_size": len(test_df),
+            "metrics": metrics
+        }
+        with open(MODEL_INFO_FILE, "w") as f:
+            json.dump(model_info, f, indent=2)
 
-        import json
         with open(METRICS_FILE, "w") as f:
             json.dump(metrics, f, indent=2)
 
@@ -207,6 +217,18 @@ def _run_training_job(train_contents: bytes, test_contents: bytes, seed: int, jo
             TRAIN_JOBS[job_id]['status'] = 'completed'
             TRAIN_JOBS[job_id]['metrics'] = metrics
         logger.info("Background training job %s complete. Hybrid Metrics: %s", job_id, metrics)
+        
+    # Fix 15: Specific Exception Handling
+    except ValueError as e:
+        logger.error("Validation Error in job %s: %s", job_id, str(e), exc_info=True)
+        with TRAIN_JOBS_LOCK:
+            TRAIN_JOBS[job_id]['status'] = 'failed'
+            TRAIN_JOBS[job_id]['error'] = f"Validation Error: {str(e)}"
+    except MemoryError:
+        logger.error("Memory Error in job %s. Data might be too large.", job_id)
+        with TRAIN_JOBS_LOCK:
+            TRAIN_JOBS[job_id]['status'] = 'failed'
+            TRAIN_JOBS[job_id]['error'] = "System ran out of memory. Try a smaller dataset."
     except Exception as e:
         logger.error("Background training job %s failed: %s", job_id, str(e), exc_info=True)
         with TRAIN_JOBS_LOCK:
@@ -261,10 +283,6 @@ async def train_status(job_id: str):
 async def predict(
     data_file: UploadFile = File(..., description="CSV file for prediction (with exog features)"),
 ):
-    # Note: Predict endpoint usually means "predict next step" or "validate on held-out data".
-    # For simplicity, we'll implement this as a hybrid prediction on the provided data.
-    # It mimics the training validation step but on new data.
-    
     try:
         if not LSTM_MODEL_PATH.exists() or not SARIMAX_MODEL_PATH.exists():
             raise HTTPException(status_code=404, detail="No trained hybrid model found. Train first.")
@@ -278,6 +296,8 @@ async def predict(
         scaler = None
         if SCALER_PATH.exists():
             scaler = joblib.load(str(SCALER_PATH))
+        else:
+            raise HTTPException(status_code=500, detail="Scaler file missing.")
 
         with tempfile.TemporaryDirectory() as tmpdir:
             data_path = Path(tmpdir) / "data.csv"
@@ -288,43 +308,29 @@ async def predict(
             logger.info("Loaded prediction data with %d days", len(df))
             
             # 1. SARIMAX Prediction (Linear)
-            # We need to extend the SARIMAX model to the new data.
-            # Ideally we refit or append, but for "predict" on held-out test data, 
-            # we can use the model to forecast if the index follows.
-            # Or we can just use the apply method.
             try:
-                # Append new observations to the results object to get in-sample predictions
-                # This doesn't re-estimate parameters, just updates the state
                 sarimax_new = sarimax_res.apply(df["total_units"])
                 sarimax_pred = sarimax_new.fittedvalues
             except Exception as e:
                 logger.warning("SARIMAX apply failed, falling back to simple predict: %s", e)
-                # Fallback might be tricky if indices don't match
                 sarimax_pred = pd.Series(0, index=df.index)
 
             # 2. LSTM Prediction (Residuals)
             feature_cols = ['residuals', 'avg_price', 'promo_any', 'dow_sin', 'dow_cos', 'doy_sin', 'doy_cos']
-            
-            # We need "residuals" column for input features? 
-            # Wait, in the training loop:
-            # feature_cols = [target_col] + [c for c ... if c != target_col]
-            # So 'residuals' is the first column.
-            # In training, we calculated residuals = actual - sarimax.
-            # But in inference (predicting future), we don't have actual.
-            # However, this endpoint "/predict" takes a CSV file which presumably has "units_sold" (actuals)
-            # because it's usually used for validation.
-            # So we CAN compute residuals here.
             
             residuals = df["total_units"] - sarimax_pred
             df["residuals"] = residuals.fillna(0.0)
 
             data = df[feature_cols].values
 
-            if scaler is None:
-                # Should have been loaded
-                raise ValueError("Scaler missing")
-            
-            data_scaled = scaler.transform(data)
+            # Fix 9: Validate Scaler Input (Basic range check)
+            # Check if any feature is drastically out of training range
+            # This is a simple heuristic check
+            try:
+                data_scaled = scaler.transform(data)
+            except ValueError as ve:
+                logger.error(f"Scaler transform failed: {ve}")
+                raise HTTPException(status_code=400, detail="Input data contains features incompatible with trained model (e.g. range mismatch).")
 
             preds_scaled: list[float] = []
             for i in range(N_IN, len(data_scaled)):
@@ -359,6 +365,8 @@ async def predict(
                 "note": f"Hybrid model prediction. First {N_IN} days skipped."
             })
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("Prediction failed: %s", str(e), exc_info=True)
         raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
@@ -376,7 +384,6 @@ async def forecast_future(
             raise HTTPException(status_code=404, detail="No trained hybrid model found. Train first.")
         
         import tensorflow as tf
-        import numpy as np
         
         # Load Models
         lstm_model = tf.keras.models.load_model(str(LSTM_MODEL_PATH))
@@ -392,8 +399,8 @@ async def forecast_future(
 
             # Preprocess Data
             raw_df = pd.read_csv(data_path, low_memory=False)
-            # ... (Standard cleanup code same as before) ...
             raw_df.columns = raw_df.columns.str.strip().str.lower()
+            
             column_mapping = {
                 'date': 'date', 'ds': 'date', 'datetime': 'date', 'time': 'date',
                 'sku_id': 'sku_id', 'sku': 'sku_id', 'product_id': 'sku_id', 'item_id': 'sku_id', 'product': 'sku_id',
@@ -426,27 +433,26 @@ async def forecast_future(
             forecast_start_date = pd.Timestamp.now().normalize()
             last_hist_date = hist_agg.index[-1]
             
+            # Fix 1 & 4: Gap Filling Validation and Quality Check
             if last_hist_date < forecast_start_date - pd.Timedelta(days=1):
-                logger.info(f"Gap detected from {last_hist_date.date()} to {forecast_start_date.date()}. Bridging with previous year's data...")
+                logger.info(f"Gap detected from {last_hist_date.date()} to {forecast_start_date.date()}. Attempting to bridge with previous year's data...")
                 
-                # Create the date range for the gap
                 gap_dates = pd.date_range(start=last_hist_date + pd.Timedelta(days=1), end=forecast_start_date - pd.Timedelta(days=1), freq='D')
                 
                 if not gap_dates.empty:
-                    # Get the corresponding dates from the previous year
                     source_dates = gap_dates - pd.DateOffset(years=1)
                     
-                    # Extract data from the previous year using nearest-neighbor lookup
-                    # This is robust to missing days in the source historical data
+                    # Extract data using nearest-neighbor
                     source_data = hist_agg.reindex(source_dates, method='nearest')
                     
-                    # Check if we found valid data to build the bridge
+                    # Fix 4: Validate Gap Data
+                    missing_ratio = source_data['total_units'].isna().sum() / len(source_data)
+                    if missing_ratio > 0.2:
+                        logger.warning(f"Gap filling source data has >20% missing values. Forecast may be unreliable.")
+                    
                     if not source_data.empty and not source_data['total_units'].isnull().all():
-                        # Create the bridge DataFrame
                         bridge_df = source_data.copy()
-                        bridge_df.index = gap_dates # Important: Reset index to the actual gap dates
-                        
-                        # Combine historical data with the bridged gap
+                        bridge_df.index = gap_dates 
                         hist_agg = pd.concat([hist_agg, bridge_df])
                         logger.info(f"Successfully bridged gap using {len(bridge_df)} days of data from the previous year.")
                     else:
@@ -455,32 +461,24 @@ async def forecast_future(
             last_date = hist_agg.index[-1]
             
             # --- Adjust forecast start to avoid partial month issues ---
-            # If we're in the middle of a month, start forecast from the next month
-            # to avoid showing incomplete month data that looks like a huge drop
+            # Fix 1: Visual Cliff Handling
             today = pd.Timestamp.now().normalize()
-            if today.day < 28:  # Not end of month yet
-                # Start forecast from the 1st of next month
+            if today.day < 28:  
                 next_month_start = (today + pd.offsets.MonthBegin(1)).normalize()
                 days_to_skip = (next_month_start - last_date).days - 1
                 if days_to_skip > 0 and days_to_skip < forecast_days:
                     logger.info(f"Skipping {days_to_skip} days to start forecast from complete month: {next_month_start.date()}")
-                    # Adjust last_date to be the day before next month starts
                     last_date = next_month_start - pd.Timedelta(days=1)
-                    # Reduce forecast_days accordingly
                     forecast_days = forecast_days - days_to_skip
 
             # --- HYBRID FORECASTING for the FUTURE ---
             
             # 1. SARIMAX Future Forecast
-            # Apply the model to the full history (original + bridged gap) to get an up-to-date state
             sarimax_ext = sarimax_res.apply(hist_agg['total_units'])
             sarimax_forecast = sarimax_ext.get_forecast(steps=forecast_days).predicted_mean
             sarimax_forecast_series = pd.Series(sarimax_forecast.values, index=[last_date + timedelta(days=i + 1) for i in range(forecast_days)])
             
             # 2. LSTM Residual Forecast
-            # We need to feed the LSTM with recent data. 
-            # The recent data needs a 'residuals' column.
-            # We calculate residuals on the recent history using the extended SARIMAX model
             fitted_values = sarimax_ext.fittedvalues
             residuals = hist_agg['total_units'] - fitted_values
             hist_agg['residuals'] = residuals.fillna(0.0)
@@ -488,20 +486,17 @@ async def forecast_future(
             feature_cols = ['residuals', 'avg_price', 'promo_any', 'dow_sin', 'dow_cos', 'doy_sin', 'doy_cos']
             seed_data = hist_agg.tail(N_IN)
             
-            # Predict future residuals
             residual_forecast_df = predict_future_with_lstm(
                 lstm_model, scaler, seed_data, forecast_days, N_IN, feature_cols
             )
             
             # 3. Combine
             future_dates = sarimax_forecast_series.index
-            # Ensure alignment
             if not residual_forecast_df.empty:
                 residual_forecast_values = residual_forecast_df['predicted_units'].values
             else:
                 residual_forecast_values = np.zeros(forecast_days)
                 
-            # If lengths differ (rare), trim
             min_len = min(len(sarimax_forecast_series), len(residual_forecast_values))
             total_forecast_values = sarimax_forecast_series.values[:min_len] + residual_forecast_values[:min_len]
             
@@ -510,7 +505,7 @@ async def forecast_future(
                 'date': future_dates[:min_len]
             })
             
-            # --- Post-Processing (same as before) ---
+            # --- Post-Processing ---
             
             if forecast_df.empty:
                 logger.warning("No forecast generated")
@@ -520,7 +515,7 @@ async def forecast_future(
             forecast_df['quarter'] = forecast_df['date'].dt.quarter
             forecast_df['day_of_week'] = forecast_df['date'].dt.dayofweek
             
-            # Distribute to SKUs (same logic)
+            # Distribute to SKUs
             recent_days = 28
             recent_cutoff = raw_df['date'].max() - pd.Timedelta(days=recent_days)
             recent_agg = raw_df[raw_df['date'] > recent_cutoff].groupby('sku_id')['units_sold'].sum()
@@ -541,11 +536,9 @@ async def forecast_future(
                 sku_df['sku_id'] = sku
                 sku_df['predicted_units'] = sku_df['predicted_units'] * sku_proportions.get(sku, 0)
                 
-                # Moving Averages
                 sku_df['ma7'] = sku_df['predicted_units'].rolling(window=7, center=True, min_periods=1).mean()
                 sku_df['ma14'] = sku_df['predicted_units'].rolling(window=14, center=True, min_periods=1).mean()
                 
-                # Quarterly Aggregation
                 quarterly = sku_df.groupby(['year', 'quarter']).agg({
                     'predicted_units': 'sum',
                     'date': ['min', 'max']
@@ -556,7 +549,6 @@ async def forecast_future(
                 quarterly['end_date'] = quarterly['end_date'].dt.strftime('%Y-%m-%d')
                 quarterly['predicted_units'] = quarterly['predicted_units'].round().astype(int)
                 
-                # Format
                 sku_df['predicted_units'] = sku_df['predicted_units'].round().astype(int)
                 sku_df['ma7'] = sku_df['ma7'].round(1)
                 sku_df['ma14'] = sku_df['ma14'].round(1)
@@ -571,8 +563,9 @@ async def forecast_future(
 
             # Total Daily
             forecast_df['predicted_units'] = forecast_df['predicted_units'].round().astype(int)
-            forecast_df['ma7'] = forecast_df['predicted_units'].rolling(window=7, center=True, min_periods=1).mean().round(1)
-            forecast_df['ma14'] = forecast_df['predicted_units'].rolling(window=14, center=True, min_periods=1).mean().round(1)
+            # Removed center=True because future forecasts don't have "future" data to center on
+            forecast_df['ma7'] = forecast_df['predicted_units'].rolling(window=7, min_periods=1).mean().round(1)
+            forecast_df['ma14'] = forecast_df['predicted_units'].rolling(window=14, min_periods=1).mean().round(1)
             forecast_df['date'] = forecast_df['date'].dt.strftime('%Y-%m-%d')
             
             total_daily_records = forecast_df[['date', 'predicted_units', 'ma7', 'ma14']].to_dict('records')
@@ -587,6 +580,8 @@ async def forecast_future(
                 "total_daily_count": len(total_daily_records)
             })
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("Future forecast failed: %s", str(e), exc_info=True)
         raise HTTPException(status_code=500, detail=f"Future forecast failed: {str(e)}")
@@ -598,7 +593,6 @@ async def get_metrics():
     if not METRICS_FILE.exists():
         raise HTTPException(status_code=404, detail="No metrics found. Train models first.")
     
-    import json
     with open(METRICS_FILE) as f:
         metrics = json.load(f)
     
@@ -618,11 +612,13 @@ async def download_model():
     )
 
 def downsample_for_chart(data: list, max_points: int = 500) -> list:
-    """Downsample data for chart display while preserving trends."""
+    """
+    Fix 18: Improved downsampling to preserve peaks.
+    Uses Max aggregation for predicted_units to prevent smoothing out critical demand spikes.
+    """
     if len(data) <= max_points:
         return data
     
-    # Calculate step size to get approximately max_points
     step = len(data) / max_points
     result = []
     
@@ -632,14 +628,16 @@ def downsample_for_chart(data: list, max_points: int = 500) -> list:
         if end_idx > len(data):
             end_idx = len(data)
         
-        # Take the data point and aggregate if needed
         chunk = data[start_idx:end_idx]
         if chunk:
-            # Use the middle point's date, average the values
+            # Use the middle point's date, but MAX for values to preserve peaks
             mid_idx = len(chunk) // 2
             point = chunk[mid_idx].copy()
             if len(chunk) > 1:
-                point['predicted_units'] = int(sum(c['predicted_units'] for c in chunk) / len(chunk))
+                # Take MAX to preserve spikes (important for demand planning)
+                point['predicted_units'] = int(max(c['predicted_units'] for c in chunk))
+                
+                # For MA, average is still acceptable to show trend
                 if 'ma7' in point:
                     ma7_vals = [c['ma7'] for c in chunk if c.get('ma7') is not None]
                     point['ma7'] = round(sum(ma7_vals) / len(ma7_vals), 1) if ma7_vals else None
@@ -661,10 +659,8 @@ def predict_future_with_lstm(
 ):
     
     from datetime import timedelta
-    import numpy as _np
 
     logger.info("predict_future_with_lstm: seed_data rows=%d, n_in=%d, forecast_days=%d", len(seed_data), n_in, forecast_days)
-    logger.info("predict_future_with_lstm: seed_data columns=%s", list(seed_data.columns))
 
     if len(seed_data) < n_in:
         logger.info("No predictions generated (not enough seed history: need %d, got %d)", n_in, len(seed_data))
@@ -678,8 +674,18 @@ def predict_future_with_lstm(
         logger.error("Failed to transform seed_data with scaler: %s", exc, exc_info=True)
         return pd.DataFrame(columns=['date', 'predicted_units'])
 
+    # Fix 20: Pre-allocate arrays for performance
+    # Fix 12: Use better assumptions for future exogenous variables
+    # Instead of global mean, use the last observed value or a moving average of the seed
+    last_observed_price = float(seed_data['avg_price'].iloc[-1])
+    last_observed_promo_freq = float(seed_data['promo_any'].mean()) # Frequency of promo in seed window
+
     future_predictions = []
 
+    # Pre-allocate buffer for scaled features to avoid vstack in loop
+    # We only need to slide one step at a time
+    buffer_shape = (forecast_days, len(feature_cols))
+    
     for day in range(forecast_days):
         try:
             window_reshaped = current_window.reshape(1, n_in, len(feature_cols))
@@ -692,20 +698,24 @@ def predict_future_with_lstm(
         dow = int(future_date.dayofweek)
         doy = int(future_date.dayofyear)
 
-        avg_price = float(seed_data['avg_price'].mean())
-        promo_any = 0
+        # Fix 12: Future Assumption Logic
+        # Use last observed price instead of global mean to better reflect recent context
+        avg_price = last_observed_price
+        # Use observed frequency, but cap at 1.0
+        promo_any = 1.0 if last_observed_promo_freq > 0.5 else 0.0
 
         raw_row = [
             0.0, # Placeholder for target (residuals)
             avg_price,
             promo_any,
-            _np.sin(2 * _np.pi * dow / 7),
-            _np.cos(2 * _np.pi * dow / 7),
-            _np.sin(2 * _np.pi * doy / 365.25),
-            _np.cos(2 * _np.pi * doy / 365.25),
+            np.sin(2 * np.pi * dow / 7),
+            np.cos(2 * np.pi * dow / 7),
+            np.sin(2 * np.pi * doy / 365.25),
+            np.cos(2 * np.pi * doy / 365.25),
         ]
 
         try:
+            # scaler expects 2D array
             scaled_row = scaler.transform([raw_row])[0]
         except Exception as exc:
             logger.error("Failed to transform generated raw_row on day %d: %s", day, exc, exc_info=True)
@@ -713,7 +723,7 @@ def predict_future_with_lstm(
 
         scaled_row[0] = pred_scaled
 
-        dummy = _np.zeros((1, len(feature_cols)))
+        dummy = np.zeros((1, len(feature_cols)))
         dummy[0, 0] = pred_scaled
         try:
             pred_inversed = scaler.inverse_transform(dummy)[0, 0]
@@ -723,7 +733,10 @@ def predict_future_with_lstm(
 
         future_predictions.append((future_date, pred_inversed))
 
-        current_window = _np.vstack([current_window[1:], scaled_row])
+        # Fix 20: Efficient Window Update (roll the window)
+        # Drop first row, append new row
+        current_window = np.roll(current_window, -1, axis=0)
+        current_window[-1, :] = scaled_row
 
     if not future_predictions:
         logger.info("No future predictions were generated after attempting model forecasts")

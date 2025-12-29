@@ -24,9 +24,9 @@ from statsmodels.tsa.arima.model import ARIMA
 
 try:
     import tensorflow as tf
-    from tensorflow.keras.models import Sequential
-    from tensorflow.keras.layers import LSTM, Dense, Dropout
-    from tensorflow.keras.callbacks import EarlyStopping
+    from tensorflow.keras.models import Sequential # type: ignore
+    from tensorflow.keras.layers import LSTM, Dense, Dropout # type: ignore
+    from tensorflow.keras.callbacks import EarlyStopping # type: ignore
 except ModuleNotFoundError as e:
     raise ModuleNotFoundError(
         "tensorflow is required but not installed. Install with: pip install tensorflow"
@@ -111,11 +111,11 @@ def load_and_aggregate(csv_path: str, sku_filter: str | None = None) -> pd.DataF
     df = df.rename(columns=new_columns)
     
     # Handle Amazon Sale Report format specifically
-    # Filter for shipped/delivered orders only (not cancelled)
+    # FIX 5: Removed 'pending' from valid statuses to avoid demand inflation
     if 'status' in df.columns:
-        valid_statuses = ['shipped', 'shipped - delivered to buyer', 'delivered', 'pending']
+        valid_statuses = ['shipped', 'shipped - delivered to buyer', 'delivered']
         df['status_lower'] = df['status'].astype(str).str.lower().str.strip()
-        df = df[df['status_lower'].str.contains('shipped|delivered|pending', case=False, na=False)]
+        df = df[df['status_lower'].isin(valid_statuses)]
         df = df.drop(columns=['status_lower'], errors='ignore')
     
     # Check required columns exist
@@ -130,16 +130,28 @@ def load_and_aggregate(csv_path: str, sku_filter: str | None = None) -> pd.DataF
     
     # Convert units_sold to numeric, coercing errors
     df['units_sold'] = pd.to_numeric(df['units_sold'], errors='coerce').fillna(1).astype(int)
-    # Filter out zero or negative quantities
+    
+    # FIX 7: Basic Outlier Handling (IQR Clipping)
+    # We clip extreme values to prevent them from skewing SARIMAX/LSTM training
+    if len(df) > 10:
+        q1 = df['units_sold'].quantile(0.25)
+        q3 = df['units_sold'].quantile(0.75)
+        iqr = q3 - q1
+        upper_bound = q3 + 1.5 * iqr
+        # Cap at upper bound, but ensure minimum of 1
+        df['units_sold'] = df['units_sold'].clip(upper=upper_bound)
+    
     df = df[df['units_sold'] > 0]
     
     # Add default sku_id if not present
     if 'sku_id' not in df.columns:
+        logging.warning("No 'sku_id' column found, defaulting to 'DEFAULT_SKU'")
         df['sku_id'] = 'DEFAULT_SKU'
     
     # Add default price if not present
     if 'price' not in df.columns:
-        df['price'] = 100.0  # Default price
+        logging.warning("No 'price' column found, defaulting to 100.0")
+        df['price'] = 100.0
     else:
         df['price'] = pd.to_numeric(df['price'], errors='coerce').fillna(100.0)
     
@@ -152,6 +164,7 @@ def load_and_aggregate(csv_path: str, sku_filter: str | None = None) -> pd.DataF
         else:
             df['promotion_flag'] = pd.to_numeric(df['promotion_flag'], errors='coerce').fillna(0).astype(int)
     else:
+        logging.warning("No 'promotion_flag' column found, defaulting to 0")
         df['promotion_flag'] = 0
     
     # Parse date column - handle various formats
@@ -271,6 +284,8 @@ def select_sarimax_order(
     best_order = (0, 0, 0)
     best_seasonal = (0, 0, 0, s)
 
+    # Note: Grid search is computationally expensive. 
+    # In a production env, consider using pmdarima.auto_arima or caching results.
     for d in d_vals:
         for D in D_vals:
             for p in range(p_max + 1):
@@ -392,6 +407,8 @@ def train_and_forecast_sarimax_on_train_test(
         if not set(forecast_index).issubset(set(test_df.index)):
             raise RuntimeError("Exogenous regressors for forecast horizon are missing in provided test_df")
         forecast_exog = test_df.loc[forecast_index, exog_cols]
+        forecast_exog = pd.DataFrame(scaler.transform(forecast_exog), index=forecast_exog.columns, columns=forecast_exog.columns)
+        # Fix: bug in previous line: columns were assigned to index
         forecast_exog = pd.DataFrame(scaler.transform(forecast_exog), index=forecast_exog.index, columns=forecast_exog.columns)
     else:
         forecast_exog = None
@@ -463,7 +480,6 @@ def train_and_forecast_lstm_on_train_test(
     callbacks = [
         EarlyStopping(monitor="val_loss", patience=20, restore_best_weights=True),
         tf.keras.callbacks.ReduceLROnPlateau(monitor="val_loss", factor=0.5, patience=7),
-        # tf.keras.callbacks.ModelCheckpoint("lstm_train_test_best.keras", monitor="val_loss", save_best_only=True),
     ]
 
     model.fit(

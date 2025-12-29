@@ -1,0 +1,12 @@
+{
+  "timestamp": "2025-12-29T17:39:40.873459",
+  "job_id": "52efb71e-ce78-4a98-8b7f-f5dd9c56b220",
+  "seed": 42,
+  "train_size": 730,
+  "test_size": 366,
+  "metrics": {
+    "Hybrid_RMSE": 309.5111031283992,
+    "Hybrid_MAPE": 18.44775449689762,
+    "SARIMAX_Only_RMSE": 305.96474080104906
+  }
+}
