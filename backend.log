@@ -1,28 +1,207 @@
 INFO:     Will watch for changes in these directories: ['/Users/shrishesha/Developer/temp/demand_prediction/be']
 INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-INFO:     Started reloader process [12649] using WatchFiles
+INFO:     Started reloader process [40389] using WatchFiles
 /Users/shrishesha/Developer/temp/demand_prediction/be/.venv/lib/python3.11/site-packages/keras/src/export/tf2onnx_lib.py:8: FutureWarning: In the future `np.object` will be defined as the corresponding NumPy scalar.
   if not hasattr(np, "object"):
 INFO:main:CORS allowed origins: ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:8080', 'https://pdp.shrishesha.space']
-INFO:     Started server process [12653]
+INFO:     Started server process [40393]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
-INFO:     127.0.0.1:58813 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58845 - "GET /metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58938 - "GET /metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:59112 - "GET /metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:59114 - "GET /metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:59134 - "GET /metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:59136 - "GET /metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:59154 - "GET /metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:59156 - "GET /metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:59170 - "GET /metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:59183 - "GET /metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:59170 - "GET /metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:59232 - "GET /metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:59234 - "GET /metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:59255 - "GET /metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:59257 - "GET /metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:59276 - "GET /metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:59278 - "GET /metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:59361 - "GET /metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50000 - "GET /health HTTP/1.1" 200 OK
+INFO:main:Loaded Hybrid models (SARIMAX + LSTM)
+INFO:main:Gap detected from 2024-12-31 to 2026-01-02. Attempting to bridge with previous year's data...
+INFO:main:Successfully bridged gap using 366 days of data from the previous year.
+INFO:main:Skipping 30 days to start forecast from complete month: 2026-02-01
+INFO:main:predict_future_with_lstm: seed_data rows=30, n_in=30, forecast_days=152
+/Users/shrishesha/Developer/temp/demand_prediction/be/.venv/lib/python3.11/site-packages/sklearn/utils/validation.py:2684: UserWarning: X has feature names, but MinMaxScaler was fitted without feature names
+  warnings.warn(
+INFO:main:Generated 152 future predictions
+INFO:     192.0.0.2:50112 - "POST /forecast_future HTTP/1.1" 200 OK
+INFO:     172.19.0.1:0 - "GET /metrics HTTP/1.1" 200 OK
+INFO:     172.19.0.1:0 - "GET /metrics HTTP/1.1" 200 OK
+INFO:main:Loaded Hybrid models (SARIMAX + LSTM)
+INFO:main:Gap detected from 2024-12-31 to 2026-01-02. Attempting to bridge with previous year's data...
+INFO:main:Successfully bridged gap using 366 days of data from the previous year.
+INFO:main:Skipping 30 days to start forecast from complete month: 2026-02-01
+INFO:main:predict_future_with_lstm: seed_data rows=30, n_in=30, forecast_days=698
+/Users/shrishesha/Developer/temp/demand_prediction/be/.venv/lib/python3.11/site-packages/sklearn/utils/validation.py:2684: UserWarning: X has feature names, but MinMaxScaler was fitted without feature names
+  warnings.warn(
+INFO:main:Generated 698 future predictions
+INFO:     192.0.0.2:50240 - "POST /forecast_future HTTP/1.1" 200 OK
+INFO:     192.0.0.2:50641 - "POST /train HTTP/1.1" 202 Accepted
+INFO:main:Background training job 3cced7bb-3169-4f19-80aa-ad84e278fd34 started with seed=0
+INFO:     172.19.0.1:0 - "GET /train/status/3cced7bb-3169-4f19-80aa-ad84e278fd34 HTTP/1.1" 200 OK
+INFO:main:Loaded train (1096 days) and test (1096 days)
+INFO:main:Training SARIMAX (Linear Component)...
+INFO:     172.19.0.1:0 - "GET /train/status/3cced7bb-3169-4f19-80aa-ad84e278fd34 HTTP/1.1" 200 OK
+INFO:     172.19.0.1:0 - "GET /train/status/3cced7bb-3169-4f19-80aa-ad84e278fd34 HTTP/1.1" 200 OK
+INFO:     172.19.0.1:0 - "GET /train/status/3cced7bb-3169-4f19-80aa-ad84e278fd34 HTTP/1.1" 200 OK
+INFO:     172.19.0.1:0 - "GET /train/status/3cced7bb-3169-4f19-80aa-ad84e278fd34 HTTP/1.1" 200 OK
+INFO:     172.19.0.1:0 - "GET /train/status/3cced7bb-3169-4f19-80aa-ad84e278fd34 HTTP/1.1" 200 OK
+INFO:     172.19.0.1:0 - "GET /train/status/3cced7bb-3169-4f19-80aa-ad84e278fd34 HTTP/1.1" 200 OK
+INFO:     172.19.0.1:0 - "GET /train/status/3cced7bb-3169-4f19-80aa-ad84e278fd34 HTTP/1.1" 200 OK
+INFO:     172.19.0.1:0 - "GET /train/status/3cced7bb-3169-4f19-80aa-ad84e278fd34 HTTP/1.1" 200 OK
+INFO:     172.19.0.1:0 - "GET /train/status/3cced7bb-3169-4f19-80aa-ad84e278fd34 HTTP/1.1" 200 OK
+INFO:     172.19.0.1:0 - "GET /train/status/3cced7bb-3169-4f19-80aa-ad84e278fd34 HTTP/1.1" 200 OK
+INFO:     172.19.0.1:0 - "GET /train/status/3cced7bb-3169-4f19-80aa-ad84e278fd34 HTTP/1.1" 200 OK
+INFO:     172.19.0.1:0 - "GET /train/status/3cced7bb-3169-4f19-80aa-ad84e278fd34 HTTP/1.1" 200 OK
+INFO:     172.19.0.1:0 - "GET /train/status/3cced7bb-3169-4f19-80aa-ad84e278fd34 HTTP/1.1" 200 OK
+INFO:     172.19.0.1:0 - "GET /train/status/3cced7bb-3169-4f19-80aa-ad84e278fd34 HTTP/1.1" 200 OK
+INFO:     172.19.0.1:0 - "GET /train/status/3cced7bb-3169-4f19-80aa-ad84e278fd34 HTTP/1.1" 200 OK
+INFO:     172.19.0.1:0 - "GET /train/status/3cced7bb-3169-4f19-80aa-ad84e278fd34 HTTP/1.1" 200 OK
+INFO:     172.19.0.1:0 - "GET /train/status/3cced7bb-3169-4f19-80aa-ad84e278fd34 HTTP/1.1" 200 OK
+INFO:     172.19.0.1:0 - "GET /train/status/3cced7bb-3169-4f19-80aa-ad84e278fd34 HTTP/1.1" 200 OK
+INFO:     172.19.0.1:0 - "GET /train/status/3cced7bb-3169-4f19-80aa-ad84e278fd34 HTTP/1.1" 200 OK
+INFO:     172.19.0.1:0 - "GET /train/status/3cced7bb-3169-4f19-80aa-ad84e278fd34 HTTP/1.1" 200 OK
+INFO:     172.19.0.1:0 - "GET /train/status/3cced7bb-3169-4f19-80aa-ad84e278fd34 HTTP/1.1" 200 OK
+INFO:     172.19.0.1:0 - "GET /train/status/3cced7bb-3169-4f19-80aa-ad84e278fd34 HTTP/1.1" 200 OK
+INFO:     172.19.0.1:0 - "GET /train/status/3cced7bb-3169-4f19-80aa-ad84e278fd34 HTTP/1.1" 200 OK
+INFO:     172.19.0.1:0 - "GET /train/status/3cced7bb-3169-4f19-80aa-ad84e278fd34 HTTP/1.1" 200 OK
+INFO:     172.19.0.1:0 - "GET /train/status/3cced7bb-3169-4f19-80aa-ad84e278fd34 HTTP/1.1" 200 OK
+INFO:root:Selected SARIMAX order (1, 1, 2) seasonal (0, 1, 1, 7) using exog cols=[]
+INFO:root:SARIMAX final fit converged with method=lbfgs
+INFO:root:SARIMAX mle_retvals: {'fopt': np.float64(6.166796218239687), 'gopt': array([-8.33989766e-05, -1.61787561e-04, -1.47440637e-04,  2.68470579e-05,
+       -2.70627964e-07]), 'fcalls': 654, 'warnflag': 0, 'converged': True, 'iterations': 65}
+INFO:root:SARIMAX summary:
+                                      SARIMAX Results                                      
+===========================================================================================
+Dep. Variable:                         total_units   No. Observations:                 1096
+Model:             SARIMAX(1, 1, 2)x(0, 1, [1], 7)   Log Likelihood               -6758.809
+Date:                             Fri, 02 Jan 2026   AIC                          13527.617
+Time:                                     10:23:40   BIC                          13552.532
+Sample:                                 01-01-2022   HQIC                         13537.052
+                                      - 12-31-2024                                         
+Covariance Type:                               opg                                         
+==============================================================================
+                 coef    std err          z      P>|z|      [0.025      0.975]
+------------------------------------------------------------------------------
+ar.L1          0.9815      0.009    105.749      0.000       0.963       1.000
+ma.L1         -1.8690      0.017   -112.658      0.000      -1.902      -1.837
+ma.L2          0.8755      0.016     54.960      0.000       0.844       0.907
+ma.S.L7       -1.0000      0.040    -24.811      0.000      -1.079      -0.921
+sigma2      1.582e+04   2.55e-06   6.21e+09      0.000    1.58e+04    1.58e+04
+===================================================================================
+Ljung-Box (L1) (Q):                   9.56   Jarque-Bera (JB):                31.55
+Prob(Q):                              0.00   Prob(JB):                         0.00
+Heteroskedasticity (H):               1.26   Skew:                             0.40
+Prob(H) (two-sided):                  0.03   Kurtosis:                         3.23
+===================================================================================
+
+Warnings:
+[1] Covariance matrix calculated using the outer product of gradients (complex-step).
+[2] Covariance matrix is singular or near-singular, with condition number 1.07e+24. Standard errors may be unstable.
+INFO:     172.19.0.1:0 - "GET /train/status/3cced7bb-3169-4f19-80aa-ad84e278fd34 HTTP/1.1" 200 OK
+INFO:main:Training LSTM on Residuals...
+2026-01-02 10:23:40.733230: E tensorflow/core/framework/node_def_util.cc:680] NodeDef mentions attribute use_unbounded_threadpool which is not in the op definition: Op<name=MapDataset; signature=input_dataset:variant, other_arguments: -> handle:variant; attr=f:func; attr=Targuments:list(type),min=0; attr=output_types:list(type),min=1; attr=output_shapes:list(shape),min=1; attr=use_inter_op_parallelism:bool,default=true; attr=preserve_cardinality:bool,default=false; attr=force_synchronous:bool,default=false; attr=metadata:string,default=""> This may be expected if your graph generating binary is newer  than this binary. Unknown attributes will be ignored. NodeDef: {{node ParallelMapDatasetV2/_15}}
+INFO:     172.19.0.1:0 - "GET /train/status/3cced7bb-3169-4f19-80aa-ad84e278fd34 HTTP/1.1" 200 OK
+INFO:     172.19.0.1:0 - "GET /train/status/3cced7bb-3169-4f19-80aa-ad84e278fd34 HTTP/1.1" 200 OK
+INFO:     172.19.0.1:0 - "GET /train/status/3cced7bb-3169-4f19-80aa-ad84e278fd34 HTTP/1.1" 200 OK
+INFO:     172.19.0.1:0 - "GET /train/status/3cced7bb-3169-4f19-80aa-ad84e278fd34 HTTP/1.1" 200 OK
+INFO:     172.19.0.1:0 - "GET /train/status/3cced7bb-3169-4f19-80aa-ad84e278fd34 HTTP/1.1" 200 OK
+INFO:     172.19.0.1:0 - "GET /train/status/3cced7bb-3169-4f19-80aa-ad84e278fd34 HTTP/1.1" 200 OK
+INFO:     172.19.0.1:0 - "GET /train/status/3cced7bb-3169-4f19-80aa-ad84e278fd34 HTTP/1.1" 200 OK
+INFO:     172.19.0.1:0 - "GET /train/status/3cced7bb-3169-4f19-80aa-ad84e278fd34 HTTP/1.1" 200 OK
+INFO:     172.19.0.1:0 - "GET /train/status/3cced7bb-3169-4f19-80aa-ad84e278fd34 HTTP/1.1" 200 OK
+2026-01-02 10:24:00.717737: E tensorflow/core/framework/node_def_util.cc:680] NodeDef mentions attribute use_unbounded_threadpool which is not in the op definition: Op<name=MapDataset; signature=input_dataset:variant, other_arguments: -> handle:variant; attr=f:func; attr=Targuments:list(type),min=0; attr=output_types:list(type),min=1; attr=output_shapes:list(shape),min=1; attr=use_inter_op_parallelism:bool,default=true; attr=preserve_cardinality:bool,default=false; attr=force_synchronous:bool,default=false; attr=metadata:string,default=""> This may be expected if your graph generating binary is newer  than this binary. Unknown attributes will be ignored. NodeDef: {{node ParallelMapDatasetV2/_14}}
+INFO:     172.19.0.1:0 - "GET /train/status/3cced7bb-3169-4f19-80aa-ad84e278fd34 HTTP/1.1" 200 OK
+INFO:     172.19.0.1:0 - "GET /train/status/3cced7bb-3169-4f19-80aa-ad84e278fd34 HTTP/1.1" 200 OK
+INFO:main:Training Standalone LSTM on total_units...
+2026-01-02 10:24:05.845792: E tensorflow/core/framework/node_def_util.cc:680] NodeDef mentions attribute use_unbounded_threadpool which is not in the op definition: Op<name=MapDataset; signature=input_dataset:variant, other_arguments: -> handle:variant; attr=f:func; attr=Targuments:list(type),min=0; attr=output_types:list(type),min=1; attr=output_shapes:list(shape),min=1; attr=use_inter_op_parallelism:bool,default=true; attr=preserve_cardinality:bool,default=false; attr=force_synchronous:bool,default=false; attr=metadata:string,default=""> This may be expected if your graph generating binary is newer  than this binary. Unknown attributes will be ignored. NodeDef: {{node ParallelMapDatasetV2/_15}}
+INFO:     172.19.0.1:0 - "GET /train/status/3cced7bb-3169-4f19-80aa-ad84e278fd34 HTTP/1.1" 200 OK
+INFO:     172.19.0.1:0 - "GET /train/status/3cced7bb-3169-4f19-80aa-ad84e278fd34 HTTP/1.1" 200 OK
+INFO:     172.19.0.1:0 - "GET /train/status/3cced7bb-3169-4f19-80aa-ad84e278fd34 HTTP/1.1" 200 OK
+INFO:     172.19.0.1:0 - "GET /train/status/3cced7bb-3169-4f19-80aa-ad84e278fd34 HTTP/1.1" 200 OK
+INFO:     172.19.0.1:0 - "GET /train/status/3cced7bb-3169-4f19-80aa-ad84e278fd34 HTTP/1.1" 200 OK
+2026-01-02 10:24:16.156287: E tensorflow/core/framework/node_def_util.cc:680] NodeDef mentions attribute use_unbounded_threadpool which is not in the op definition: Op<name=MapDataset; signature=input_dataset:variant, other_arguments: -> handle:variant; attr=f:func; attr=Targuments:list(type),min=0; attr=output_types:list(type),min=1; attr=output_shapes:list(shape),min=1; attr=use_inter_op_parallelism:bool,default=true; attr=preserve_cardinality:bool,default=false; attr=force_synchronous:bool,default=false; attr=metadata:string,default=""> This may be expected if your graph generating binary is newer  than this binary. Unknown attributes will be ignored. NodeDef: {{node ParallelMapDatasetV2/_14}}
+INFO:     172.19.0.1:0 - "GET /train/status/3cced7bb-3169-4f19-80aa-ad84e278fd34 HTTP/1.1" 200 OK
+INFO:     172.19.0.1:0 - "GET /train/status/3cced7bb-3169-4f19-80aa-ad84e278fd34 HTTP/1.1" 200 OK
+INFO:main:Saved LSTM scaler to models/scaler_minmax.pkl
+INFO:main:Saved SARIMAX model to models/sarimax_model.pkl
+INFO:main:Background training job 3cced7bb-3169-4f19-80aa-ad84e278fd34 complete. Hybrid Metrics: {'Hybrid_RMSE': 530.2193019881643, 'Hybrid_MAPE': 34.98019358658704, 'SARIMAX_Only_RMSE': 520.0904080533526, 'SARIMAX_Only_MAPE': 34.32938970615206, 'LSTM_Only_RMSE': 177.0316866437768, 'LSTM_Only_MAPE': 10.962548857360373}
+INFO:     172.19.0.1:0 - "GET /train/status/3cced7bb-3169-4f19-80aa-ad84e278fd34 HTTP/1.1" 200 OK
+INFO:     172.19.0.1:0 - "GET /metrics HTTP/1.1" 200 OK
+INFO:main:Loaded Hybrid models (SARIMAX + LSTM)
+/Users/shrishesha/Developer/temp/demand_prediction/be/main.py:435: UserWarning: Could not infer format, so each element will be parsed individually, falling back to `dateutil`. To ensure parsing is consistent and as-expected, please specify a format.
+  raw_df['date'] = pd.to_datetime(raw_df['date'])
+INFO:main:Gap detected from 2022-04-30 to 2026-01-02. Attempting to bridge with previous year's data...
+INFO:main:Successfully bridged gap using 1342 days of data from the previous year.
+INFO:main:Skipping 30 days to start forecast from complete month: 2026-02-01
+INFO:main:predict_future_with_lstm: seed_data rows=30, n_in=30, forecast_days=61
+/Users/shrishesha/Developer/temp/demand_prediction/be/.venv/lib/python3.11/site-packages/sklearn/utils/validation.py:2684: UserWarning: X has feature names, but MinMaxScaler was fitted without feature names
+  warnings.warn(
+2026-01-02 10:26:24.526056: E tensorflow/core/framework/node_def_util.cc:680] NodeDef mentions attribute use_unbounded_threadpool which is not in the op definition: Op<name=MapDataset; signature=input_dataset:variant, other_arguments: -> handle:variant; attr=f:func; attr=Targuments:list(type),min=0; attr=output_types:list(type),min=1; attr=output_shapes:list(shape),min=1; attr=use_inter_op_parallelism:bool,default=true; attr=preserve_cardinality:bool,default=false; attr=force_synchronous:bool,default=false; attr=metadata:string,default=""> This may be expected if your graph generating binary is newer  than this binary. Unknown attributes will be ignored. NodeDef: {{node ParallelMapDatasetV2/_14}}
+INFO:main:Generated 61 future predictions
+INFO:     192.0.0.2:51968 - "POST /forecast_future HTTP/1.1" 200 OK
+INFO:     192.0.0.2:52561 - "POST /train HTTP/1.1" 202 Accepted
+INFO:main:Background training job 58d92c91-588b-4eff-a991-7623072251c3 started with seed=0
+INFO:     172.19.0.1:0 - "GET /train/status/58d92c91-588b-4eff-a991-7623072251c3 HTTP/1.1" 200 OK
+INFO:main:Loaded train (91 days) and test (16 days)
+INFO:main:Training SARIMAX (Linear Component)...
+INFO:     172.19.0.1:0 - "GET /train/status/58d92c91-588b-4eff-a991-7623072251c3 HTTP/1.1" 200 OK
+INFO:     172.19.0.1:0 - "GET /train/status/58d92c91-588b-4eff-a991-7623072251c3 HTTP/1.1" 200 OK
+INFO:     172.19.0.1:0 - "GET /train/status/58d92c91-588b-4eff-a991-7623072251c3 HTTP/1.1" 200 OK
+INFO:root:Selected SARIMAX order (2, 1, 2) seasonal (0, 1, 1, 7) using exog cols=[]
+INFO:root:SARIMAX final fit converged with method=lbfgs
+INFO:root:SARIMAX mle_retvals: {'fopt': np.float64(5.004312418058771), 'gopt': array([ 2.55433896e-05, -4.92770269e-06,  2.99940517e-05, -2.68849831e-05,
+       -2.23145946e-06,  1.92823535e-07]), 'fcalls': 462, 'warnflag': 0, 'converged': True, 'iterations': 45}
+INFO:root:SARIMAX summary:
+                                      SARIMAX Results                                      
+===========================================================================================
+Dep. Variable:                         total_units   No. Observations:                   91
+Model:             SARIMAX(2, 1, 2)x(0, 1, [1], 7)   Log Likelihood                -455.392
+Date:                             Fri, 02 Jan 2026   AIC                            922.785
+Time:                                     10:28:49   BIC                            936.528
+Sample:                                 03-31-2022   HQIC                           928.262
+                                      - 06-29-2022                                         
+Covariance Type:                               opg                                         
+==============================================================================
+                 coef    std err          z      P>|z|      [0.025      0.975]
+------------------------------------------------------------------------------
+ar.L1         -1.4024      0.200     -7.003      0.000      -1.795      -1.010
+ar.L2         -0.4081      0.211     -1.937      0.053      -0.821       0.005
+ma.L1          1.4970      0.239      6.262      0.000       1.028       1.966
+ma.L2          0.5523      0.243      2.275      0.023       0.076       1.028
+ma.S.L7       -0.7833      0.146     -5.349      0.000      -1.070      -0.496
+sigma2      1.468e+04   2458.618      5.971      0.000    9861.320    1.95e+04
+===================================================================================
+Ljung-Box (L1) (Q):                   0.06   Jarque-Bera (JB):                15.77
+Prob(Q):                              0.81   Prob(JB):                         0.00
+Heteroskedasticity (H):               0.88   Skew:                            -0.82
+Prob(H) (two-sided):                  0.76   Kurtosis:                         4.57
+===================================================================================
+
+Warnings:
+[1] Covariance matrix calculated using the outer product of gradients (complex-step).
+INFO:main:Training LSTM on Residuals...
+2026-01-02 10:28:49.682470: E tensorflow/core/framework/node_def_util.cc:680] NodeDef mentions attribute use_unbounded_threadpool which is not in the op definition: Op<name=MapDataset; signature=input_dataset:variant, other_arguments: -> handle:variant; attr=f:func; attr=Targuments:list(type),min=0; attr=output_types:list(type),min=1; attr=output_shapes:list(shape),min=1; attr=use_inter_op_parallelism:bool,default=true; attr=preserve_cardinality:bool,default=false; attr=force_synchronous:bool,default=false; attr=metadata:string,default=""> This may be expected if your graph generating binary is newer  than this binary. Unknown attributes will be ignored. NodeDef: {{node ParallelMapDatasetV2/_15}}
+INFO:     172.19.0.1:0 - "GET /train/status/58d92c91-588b-4eff-a991-7623072251c3 HTTP/1.1" 200 OK
+INFO:     172.19.0.1:0 - "GET /train/status/58d92c91-588b-4eff-a991-7623072251c3 HTTP/1.1" 200 OK
+INFO:main:Training Standalone LSTM on total_units...
+INFO:     172.19.0.1:0 - "GET /train/status/58d92c91-588b-4eff-a991-7623072251c3 HTTP/1.1" 200 OK
+2026-01-02 10:28:55.004499: E tensorflow/core/framework/node_def_util.cc:680] NodeDef mentions attribute use_unbounded_threadpool which is not in the op definition: Op<name=MapDataset; signature=input_dataset:variant, other_arguments: -> handle:variant; attr=f:func; attr=Targuments:list(type),min=0; attr=output_types:list(type),min=1; attr=output_shapes:list(shape),min=1; attr=use_inter_op_parallelism:bool,default=true; attr=preserve_cardinality:bool,default=false; attr=force_synchronous:bool,default=false; attr=metadata:string,default=""> This may be expected if your graph generating binary is newer  than this binary. Unknown attributes will be ignored. NodeDef: {{node ParallelMapDatasetV2/_14}}
+INFO:main:Saved LSTM scaler to models/scaler_minmax.pkl
+INFO:main:Saved SARIMAX model to models/sarimax_model.pkl
+INFO:main:Background training job 58d92c91-588b-4eff-a991-7623072251c3 complete. Hybrid Metrics: {'Hybrid_RMSE': 1548.3694872445953, 'Hybrid_MAPE': 119.00935416930558, 'SARIMAX_Only_RMSE': 1437.264293198819, 'SARIMAX_Only_MAPE': 105.09352478808627, 'LSTM_Only_RMSE': 511.32807430093453, 'LSTM_Only_MAPE': 47.67156332701582}
+INFO:     172.19.0.1:0 - "GET /train/status/58d92c91-588b-4eff-a991-7623072251c3 HTTP/1.1" 200 OK
+INFO:main:Loaded Hybrid models (SARIMAX + LSTM)
+/Users/shrishesha/Developer/temp/demand_prediction/be/main.py:435: UserWarning: Could not infer format, so each element will be parsed individually, falling back to `dateutil`. To ensure parsing is consistent and as-expected, please specify a format.
+  raw_df['date'] = pd.to_datetime(raw_df['date'])
+INFO:main:Gap detected from 2022-04-30 to 2026-01-02. Attempting to bridge with previous year's data...
+INFO:main:Successfully bridged gap using 1342 days of data from the previous year.
+INFO:main:Skipping 30 days to start forecast from complete month: 2026-02-01
+INFO:main:predict_future_with_lstm: seed_data rows=30, n_in=30, forecast_days=152
+/Users/shrishesha/Developer/temp/demand_prediction/be/.venv/lib/python3.11/site-packages/sklearn/utils/validation.py:2684: UserWarning: X has feature names, but MinMaxScaler was fitted without feature names
+  warnings.warn(
+2026-01-02 10:29:13.037586: E tensorflow/core/framework/node_def_util.cc:680] NodeDef mentions attribute use_unbounded_threadpool which is not in the op definition: Op<name=MapDataset; signature=input_dataset:variant, other_arguments: -> handle:variant; attr=f:func; attr=Targuments:list(type),min=0; attr=output_types:list(type),min=1; attr=output_shapes:list(shape),min=1; attr=use_inter_op_parallelism:bool,default=true; attr=preserve_cardinality:bool,default=false; attr=force_synchronous:bool,default=false; attr=metadata:string,default=""> This may be expected if your graph generating binary is newer  than this binary. Unknown attributes will be ignored. NodeDef: {{node ParallelMapDatasetV2/_14}}
+INFO:main:Generated 152 future predictions
+INFO:     192.0.0.2:52742 - "POST /forecast_future HTTP/1.1" 200 OK
+INFO:main:Loaded Hybrid models (SARIMAX + LSTM)
+INFO:main:Gap detected from 2024-05-26 to 2026-01-02. Attempting to bridge with previous year's data...
+INFO:main:Successfully bridged gap using 585 days of data from the previous year.
+INFO:main:Skipping 30 days to start forecast from complete month: 2026-02-01
+INFO:main:predict_future_with_lstm: seed_data rows=30, n_in=30, forecast_days=152
+/Users/shrishesha/Developer/temp/demand_prediction/be/.venv/lib/python3.11/site-packages/sklearn/utils/validation.py:2684: UserWarning: X has feature names, but MinMaxScaler was fitted without feature names
+  warnings.warn(
+2026-01-02 10:29:52.616003: E tensorflow/core/framework/node_def_util.cc:680] NodeDef mentions attribute use_unbounded_threadpool which is not in the op definition: Op<name=MapDataset; signature=input_dataset:variant, other_arguments: -> handle:variant; attr=f:func; attr=Targuments:list(type),min=0; attr=output_types:list(type),min=1; attr=output_shapes:list(shape),min=1; attr=use_inter_op_parallelism:bool,default=true; attr=preserve_cardinality:bool,default=false; attr=force_synchronous:bool,default=false; attr=metadata:string,default=""> This may be expected if your graph generating binary is newer  than this binary. Unknown attributes will be ignored. NodeDef: {{node ParallelMapDatasetV2/_14}}
+INFO:main:Generated 152 future predictions
+INFO:     192.0.0.2:52928 - "POST /forecast_future HTTP/1.1" 200 OK

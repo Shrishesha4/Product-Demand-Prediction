@@ -10,30 +10,7 @@ VITE HMR config: {
   hmrBindHost: '0.0.0.0'
 }
 
-  VITE v7.3.0  ready in 860 ms
+  VITE v7.3.0  ready in 1108 ms
 
   ➜  Local:   http://localhost:5173/
   ➜  Network: http://192.0.0.2:5173/
-
-Google Chrome is requesting /.well-known/appspecific/com.chrome.devtools.json to automatically configure devtools project settings. To learn why, and how to prevent this message, see https://svelte.dev/docs/cli/devtools-json
-
-9:11:41 AM [vite] (client) hmr update /src/routes/compare/+page.svelte, /src/routes/layout.css
-9:11:41 AM [vite] (ssr) page reload src/routes/compare/+page.svelte
-9:11:50 AM [vite] (client) hmr update /src/routes/compare/+page.svelte, /src/routes/layout.css
-9:11:50 AM [vite] (ssr) page reload src/routes/compare/+page.svelte
-9:11:56 AM [vite] (client) hmr update /src/routes/compare/+page.svelte, /src/routes/layout.css
-9:11:56 AM [vite] (ssr) page reload src/routes/compare/+page.svelte
-9:12:01 AM [vite] (client) hmr update /src/routes/compare/+page.svelte, /src/routes/layout.css
-9:12:01 AM [vite] (ssr) page reload src/routes/compare/+page.svelte
-9:12:42 AM [vite] (client) hmr update /src/routes/compare/+page.svelte, /src/routes/layout.css
-9:12:42 AM [vite] (ssr) page reload src/routes/compare/+page.svelte
-9:12:51 AM [vite] (client) hmr update /src/routes/compare/+page.svelte, /src/routes/layout.css
-9:12:51 AM [vite] (ssr) page reload src/routes/compare/+page.svelte
-9:12:59 AM [vite] (client) hmr update /src/routes/compare/+page.svelte, /src/routes/layout.css
-9:12:59 AM [vite] (ssr) page reload src/routes/compare/+page.svelte
-9:13:32 AM [vite] (client) hmr update /src/routes/layout.css
-9:13:32 AM [vite] (ssr) page reload src/routes/compare/+page.svelte
-9:13:56 AM [vite] (client) hmr update /src/routes/compare/+page.svelte, /src/routes/layout.css
-9:13:56 AM [vite] (ssr) page reload src/routes/compare/+page.svelte
-9:13:58 AM [vite] (client) hmr update /src/routes/layout.css
-9:13:58 AM [vite] (ssr) page reload src/routes/compare/+page.svelte

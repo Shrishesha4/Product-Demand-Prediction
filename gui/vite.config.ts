@@ -58,6 +58,20 @@ export default defineConfig({
 			port: hmrServerPort,
 			clientPort: hmrClientPort,
 		},
+		proxy: {
+			'/metrics': {
+				target: 'http://localhost:8000',
+				changeOrigin: true,
+			},
+			'/train': {
+				target: 'http://localhost:8000',
+				changeOrigin: true,
+			},
+			'/api': {
+				target: 'http://localhost:8000',
+				changeOrigin: true,
+			},
+		},
 	},
 	preview: {
 		host: hostBinding,

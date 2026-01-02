@@ -126,7 +126,7 @@
             formData.append('quarters', quarters.toString());
             formData.append('model_type', 'hybrid');
 
-            const response = await fetch(`${API_BASE}/api/forecast_future`, {
+            const response = await fetch(`${API_BASE}/forecast_future`, {
                 method: 'POST',
                 body: formData
             });

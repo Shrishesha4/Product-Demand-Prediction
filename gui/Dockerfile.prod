@@ -4,20 +4,18 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --silent
 COPY . .
-RUN npm run build \
-  && mkdir -p /app/dist \
-  && if [ -d build/client ]; then cp -r build/client/* /app/dist; \
-     elif [ -d build ]; then cp -r build/* /app/dist; \
-     elif [ -d .svelte-kit/output/client ]; then cp -r .svelte-kit/output/client/* /app/dist; \
-     elif [ -d .svelte-kit/output/static ]; then cp -r .svelte-kit/output/static/* /app/dist; \
-     elif [ -d .svelte-kit/output ]; then cp -r .svelte-kit/output/* /app/dist; \
-     else echo "ERROR: no client bundle found (looked in build/, build/client, .svelte-kit/output{,/client,/static})" && ls -la /app && ls -la /app/.svelte-kit || true && exit 1; fi
+RUN npm run build
 
 FROM node:20-bullseye-slim AS runtime
 WORKDIR /app
 
-COPY --from=build /app /app
+COPY --from=build /app/build ./build
+COPY --from=build /app/package*.json ./
+RUN npm ci --production --silent
 
 EXPOSE 80
 
-CMD ["npm", "run", "preview", "--", "--host", "0.0.0.0", "--port", "80"]
+ENV PORT=80
+ENV HOST=0.0.0.0
+
+CMD ["node", "build"]

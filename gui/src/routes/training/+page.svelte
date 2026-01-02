@@ -62,7 +62,7 @@
 // Default to async background training to avoid timeouts
 formData.append('async_mode', '1');
 
-const response = await fetch(`${API_BASE}/api/train`, {
+const response = await fetch(`${API_BASE}/train`, {
 			method: 'POST',
 			body: formData
 		});
@@ -73,7 +73,7 @@ const response = await fetch(`${API_BASE}/api/train`, {
 				// Poll for completion
 				const poll = async () => {
 					try {
-						const st = await fetch(`${API_BASE}/api/train/status/${jobId}`);
+						const st = await fetch(`${API_BASE}/train/status/${jobId}`);
 						if (!st.ok) throw new Error('Status fetch failed');
 						const j = await st.json();
 						jobStatus = j.status || jobStatus;
@@ -115,7 +115,7 @@ const response = await fetch(`${API_BASE}/api/train`, {
 
 	async function downloadModel() {
 		try {
-const response = await fetch(`${API_BASE}/api/model/download`);
+const response = await fetch(`${API_BASE}/model/download`);
 			if (!response.ok) throw new Error('Failed to download model');
 
 			const blob = await response.blob();

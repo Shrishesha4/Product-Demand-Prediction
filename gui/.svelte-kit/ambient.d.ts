@@ -52,6 +52,7 @@ declare module '$env/static/private' {
 	export const npm_execpath: string;
 	export const VIRTUAL_ENV: string;
 	export const PATH: string;
+	export const VITE_API_BASE: string;
 	export const npm_package_json: string;
 	export const npm_config_engine_strict: string;
 	export const _: string;
@@ -146,6 +147,7 @@ declare module '$env/dynamic/private' {
 		npm_execpath: string;
 		VIRTUAL_ENV: string;
 		PATH: string;
+		VITE_API_BASE: string;
 		npm_package_json: string;
 		npm_config_engine_strict: string;
 		_: string;

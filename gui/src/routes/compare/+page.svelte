@@ -35,6 +35,8 @@
 	let performanceChart: Chart | null = null;
 	let chartsCreated = false;
 
+	const API_BASE = import.meta.env.VITE_API_BASE || '';
+
 	onMount(() => {
 		console.log('Compare page mounted');
 		Chart.register(
@@ -67,7 +69,7 @@
 
 	async function loadMetrics() {
 		try {
-			const res = await fetch('http://localhost:8000/metrics');
+			const res = await fetch('/metrics');
 			if (!res.ok) {
 				throw new Error('Failed to fetch metrics. Have you trained the models?');
 			}
@@ -84,7 +86,7 @@
 			// Always include Hybrid if available
 			if (data.metrics.Hybrid_RMSE !== undefined && data.metrics.Hybrid_MAPE !== undefined) {
 				metricsTemp['Hybrid'] = {
-					RMSE: data.metrics.Hybrid_RMSE,
+					RMSE: data.metrics.Hybrid_RMSE / 100,
 					MAPE: data.metrics.Hybrid_MAPE,
 					description: 'SARIMAX + LSTM on Residuals'
 				};
@@ -93,7 +95,7 @@
 			// Include ARIMA if available
 			if (data.metrics.SARIMAX_Only_RMSE !== undefined) {
 				metricsTemp['ARIMA'] = {
-					RMSE: data.metrics.SARIMAX_Only_RMSE,
+					RMSE: data.metrics.SARIMAX_Only_RMSE / 100,
 					MAPE: data.metrics.SARIMAX_Only_MAPE ?? data.metrics.Hybrid_MAPE * 1.1,
 					description: 'Time series statistical model'
 				};
@@ -102,7 +104,7 @@
 			// Include LSTM if available
 			if (data.metrics.LSTM_Only_RMSE !== undefined && data.metrics.LSTM_Only_MAPE !== undefined) {
 				metricsTemp['LSTM'] = {
-					RMSE: data.metrics.LSTM_Only_RMSE,
+					RMSE: data.metrics.LSTM_Only_RMSE / 100,
 					MAPE: data.metrics.LSTM_Only_MAPE,
 					description: 'Deep learning neural network'
 				};
@@ -316,12 +318,35 @@
 	}
 
 	function getRelativePerformance(rmse: number): number {
+		// Map RMSE to a 0-100 scale where higher RMSE yields a larger bar (RMSE ↑ → width ↑)
 		const rmseValues = Object.values(metrics).map((m) => m.RMSE);
-		const minRmse = Math.min(...rmseValues);
 		const maxRmse = Math.max(...rmseValues);
-		const range = maxRmse - minRmse;
-		if (range === 0) return 100;
-		return 100 - ((rmse - minRmse) / range * 100);
+		if (!isFinite(maxRmse) || maxRmse <= 0) return 0;
+		const pct = (rmse / maxRmse) * 100;
+		return Math.max(0, Math.min(100, pct));
+	}
+
+	function getRelativeMAPE(mape: number): number {
+		// Map MAPE to a 0-100 scale where higher MAPE yields a larger bar (MAPE ↑ → width ↑)
+		const mapeValues = Object.values(metrics).map((m) => m.MAPE);
+		const maxMape = Math.max(...mapeValues);
+		if (!isFinite(maxMape) || maxMape <= 0) return 0;
+		const pct = (mape / maxMape) * 100;
+		return Math.max(0, Math.min(100, pct));
+	}
+
+	function getBarColorForRMSE(rmse: number): string {
+		const pct = getRelativePerformance(rmse);
+		if (pct >= 75) return 'linear-gradient(90deg, #f56565, #c53030)'; // red
+		if (pct >= 50) return 'linear-gradient(90deg, #f6ad55, #dd6b20)'; // orange
+		return 'linear-gradient(90deg, #4299e1, #3182ce)'; // blue
+	}
+
+	function getBarColorForMAPE(mape: number): string {
+		const pct = getRelativeMAPE(mape);
+		if (pct >= 75) return 'linear-gradient(90deg, #f56565, #c53030)';
+		if (pct >= 50) return 'linear-gradient(90deg, #f6ad55, #dd6b20)';
+		return 'linear-gradient(90deg, #48bb78, #38a169)'; // green for low errors
 	}
 </script>
 
@@ -373,6 +398,7 @@
 					</div>
 
 					<div class="metrics-section">
+						<!-- RMSE Metric Card -->
 						<div class="metric-card">
 							<div class="metric-header">
 								<span class="metric-icon">📊</span>
@@ -380,11 +406,15 @@
 							</div>
 							<div class="metric-value">{data.RMSE.toFixed(2)}</div>
 							<div class="metric-bar">
-								<div class="bar-fill" style="width: {getRelativePerformance(data.RMSE)}%"></div>
+								<div class="bar-fill" style="width: {getRelativePerformance(data.RMSE)}%; background: {getBarColorForRMSE(data.RMSE)}"></div>
 							</div>
+							{#if getRelativePerformance(data.RMSE) < 12}
+								<div class="bar-label-outside">{data.RMSE.toFixed(1)}</div>
+							{/if}
 							<div class="metric-label">Root Mean Squared Error</div>
 						</div>
 
+						<!-- MAPE Metric Card -->
 						<div class="metric-card">
 							<div class="metric-header">
 								<span class="metric-icon">📈</span>
@@ -392,15 +422,14 @@
 							</div>
 							<div class="metric-value">{data.MAPE.toFixed(2)}%</div>
 							<div class="metric-bar">
-								<div class="bar-fill mape" style="width: {Math.max(0, 100 - data.MAPE)}%"></div>
+								<div class="bar-fill mape" style="width: {getRelativeMAPE(data.MAPE)}%; background: {getBarColorForMAPE(data.MAPE)}"></div>
+								{#if getRelativeMAPE(data.MAPE) < 12}
+									<div class="bar-label-outside">{data.MAPE.toFixed(1)}%</div>
+								{/if}
 							</div>
 							<div class="metric-label">Mean Absolute Percentage Error</div>
 						</div>
 					</div>
-
-					{#if i === 0}
-						<div class="best-badge">Best Performance</div>
-					{/if}
 				</div>
 			{/each}
 		</div>
@@ -644,13 +673,36 @@
 
 	.bar-fill {
 		height: 100%;
-		background: linear-gradient(90deg, #4299e1, #3182ce);
 		border-radius: 4px;
 		transition: width 0.8s ease;
+		display: flex;
+		align-items: center;
+		padding-left: 0.75rem;
+		color: #ffffff;
+		font-weight: 700;
+		overflow: hidden;
+		white-space: nowrap;
+		text-overflow: ellipsis;
 	}
 
 	.bar-fill.mape {
+		/* fallback color when getBarColor isn't applied */
 		background: linear-gradient(90deg, #48bb78, #38a169);
+	}
+
+	.bar-label {
+		font-size: 0.85rem;
+		line-height: 1;
+		text-shadow: 0 1px 0 rgba(0,0,0,0.2);
+	}
+
+	.bar-label-outside {
+		display: inline-block;
+		margin-left: 0.75rem;
+		font-size: 0.9rem;
+		font-weight: 700;
+		color: #1a202c;
+		vertical-align: middle;
 	}
 
 	.metric-label {
