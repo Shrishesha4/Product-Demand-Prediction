@@ -205,3 +205,6 @@ INFO:main:predict_future_with_lstm: seed_data rows=30, n_in=30, forecast_days=15
 2026-01-02 10:29:52.616003: E tensorflow/core/framework/node_def_util.cc:680] NodeDef mentions attribute use_unbounded_threadpool which is not in the op definition: Op<name=MapDataset; signature=input_dataset:variant, other_arguments: -> handle:variant; attr=f:func; attr=Targuments:list(type),min=0; attr=output_types:list(type),min=1; attr=output_shapes:list(shape),min=1; attr=use_inter_op_parallelism:bool,default=true; attr=preserve_cardinality:bool,default=false; attr=force_synchronous:bool,default=false; attr=metadata:string,default=""> This may be expected if your graph generating binary is newer  than this binary. Unknown attributes will be ignored. NodeDef: {{node ParallelMapDatasetV2/_14}}
 INFO:main:Generated 152 future predictions
 INFO:     192.0.0.2:52928 - "POST /forecast_future HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Finished server process [40393]
+INFO:     Stopping reloader process [40389]

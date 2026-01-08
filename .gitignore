@@ -30,9 +30,9 @@ Thumbs.db
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
-*.keras
-*.h5
-*.ckpt
-*.pkl
+# *.keras
+# *.h5
+# *.ckpt
+# *.pkl
 
-*.csv
+# *.csv
